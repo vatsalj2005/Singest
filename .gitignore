@@ -34,3 +34,18 @@ next-env.d.ts
 # OS files
 .DS_Store
 Thumbs.db
+
+# Python temporary and cache files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Backend ingestion log files
+Backend/logs/*.log
+

@@ -1,0 +1,42 @@
+name: Daily Stock Ingestion Pipeline
+
+on:
+  schedule:
+    # Run everyday at 2:30 AM UTC (8:00 AM Indian Standard Time)
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+    # Allows manual trigger of the pipeline from the GitHub Actions tab
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Backend/requirements.txt
+
+      - name: Run Master Ingestion Runner
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CORP_ACT_LOOKAHEAD_DAYS: ${{ secrets.CORP_ACT_LOOKAHEAD_DAYS || 90 }}
+        run: |
+          python Backend/main.py
+
+      - name: Upload Ingestion Log Files
+        if: always() # Ensure logs are uploaded even if some scripts fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-logs-${{ github.run_id }}
+          path: Backend/logs/
+          retention-days: 30

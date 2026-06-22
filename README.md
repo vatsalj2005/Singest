@@ -377,3 +377,124 @@ npm run build
 # 6. Start the compiled production package
 npm run start
 ```
+
+---
+
+## 9. The Ingestion Backend (Python Data Sync)
+
+The `Backend/` folder contains a set of Python ingestion scripts that fetch corporate actions, live news, and technical scan metrics from the Dhan API and load them into CockroachDB. This runs in the background (manually or as a scheduled task) to populate the database so that the website doesn't hit API limits.
+
+### 9.1 Environment & Setup
+
+The Python backend scripts are configured to read the database details from **either** the local `Backend/.env` file or the Next.js parent root folder's `.env` file. You only need to configure `.env` once at the root directory of Singest.
+
+To install dependencies:
+
+```bash
+# Go to the Backend folder
+cd Backend
+
+# Install python packages
+pip install -r requirements.txt
+```
+
+### 9.2 Running the Pipeline
+
+You can run all ingestion scripts sequentially or individually from the root folder or the `Backend/` directory:
+
+```bash
+# Run the combined pipeline (Corporate Actions -> Live News -> Custom Scan)
+python Backend/main.py
+
+# Run individual scripts
+python Backend/scripts/ingest_corporate_actions.py
+python Backend/scripts/ingest_live_news.py
+python Backend/scripts/ingest_custom_scan.py
+```
+
+### 9.3 Ingestion Files & Functions Guide
+
+#### 9.3.1 Orchestration Core (`Backend/main.py`)
+
+- **`update_last_run_date(script_name, run_date)`**: Updates the database metadata table (`ingestion_metadata`) with the date after a successful run.
+- **`run_script(script_path)`**: Executes a python script in a background subprocess, streaming standard output/error to the terminal.
+- **`main()`**: Runs all scripts in sequence and prints a summary.
+
+#### 9.3.2 Corporate Actions Ingestion (`Backend/scripts/ingest_corporate_actions.py`)
+
+- **`calculate_row_hash(record, act_type)`**: Calculates a SHA-256 hash using the fields `["isin", "ann_date", "ann_ltp", "ex_date"]` to identify unique actions.
+- **`load_existing_hashes(conn, table_name)`**: Loads all hashes already present in a table.
+- **`init_tables()`**: Creates all 6 corporate action tables if they do not exist.
+- **`fetch_corporate_actions(session, act_type, start_date, end_date, existing_keys)`**: Fetches paginated corporate action records from Dhan API.
+- **`insert_records(table_name, records)`**: Batch inserts unique new actions into the database.
+
+#### 9.3.3 Live News Ingestion (`Backend/scripts/ingest_live_news.py`)
+
+- **`load_existing_ids(conn)`**: Fetches all existing news article IDs.
+- **`init_table()`**: Creates the `live_news` table if it does not exist.
+- **`fetch_live_news(session, existing_keys)`**: Fetches the latest live market articles.
+- **`insert_records(records)`**: Batch inserts new news records.
+
+#### 9.3.4 Custom Scan Ingestion (`Backend/scripts/ingest_custom_scan.py`)
+
+- **`load_existing_isins(conn)`**: Fetches all ISINs currently in the custom scan table.
+- **`init_table()`**: Creates the `custom_scan` table if it does not exist.
+- **`fetch_custom_scan(session, existing_keys)`**: Queries the technical screener metrics for all stocks.
+- **`upsert_records(records)`**: Upserts (inserts or updates) stock records in the database.
+
+---
+
+## 10. Hosting the Website on Vercel
+
+To host this website online for free using Vercel, follow these simple steps:
+
+1. **Push your code to GitHub**: Create a repository on GitHub (or use your existing one) and push all project files.
+2. **Log into Vercel**: Visit [vercel.com](https://vercel.com) and create an account using your GitHub account login.
+3. **Import Project**: In the Vercel dashboard, click **Add New** ➔ **Project**. Select your GitHub repository from the list and click **Import**.
+4. **Configure Environment Variables**: Expand the **Environment Variables** dropdown and add the following two keys:
+   - **Key**: `DATABASE_URL`
+   - **Value**: _[Your CockroachDB Connection String]_
+   - **Key**: `CORP_ACT_LOOKAHEAD_DAYS`
+   - **Value**: `90`
+5. **Deploy**: Click the **Deploy** button. Vercel will build the Next.js app in the cloud, publish it, and give you a live shareable URL (like `singest.vercel.app`)!
+
+---
+
+## 11. Automated Daily Ingestion (GitHub Actions)
+
+Instead of running python scripts on your local PC every day, we use **GitHub Actions** to automate the process completely. The scripts run automatically in the cloud, and you can download the logs anytime.
+
+### 11.1 How it Works
+
+A workflow file is saved in `.github/workflows/ingest.yml`.
+
+- **Automatic Schedule**: It runs automatically every day at **8:00 AM Indian Standard Time (2:30 AM UTC)**.
+- **Manual Trigger**: You can trigger a run at any time using a button on GitHub.
+- **Artifacts**: At the end of every run, it saves the log files as an archive that you can download.
+
+### 11.2 Initial Setup (Secrets Configuration)
+
+Because your database string is private, you must save it securely on GitHub before the script can run:
+
+1. Go to your repository page on GitHub.
+2. Click the **Settings** tab at the top.
+3. In the left sidebar, click **Secrets and variables** ➔ **Actions**.
+4. Click the **New repository secret** button.
+5. Enter:
+   - **Name**: `DATABASE_URL`
+   - **Value**: _[Your CockroachDB Connection String]_
+6. Click **Add secret**.
+7. _(Optional)_ Add a second secret named `CORP_ACT_LOOKAHEAD_DAYS` if you want to change the default 90 days lookahead window.
+
+### 11.3 How to Run the Pipeline Manually
+
+1. Go to the **Actions** tab at the top of your GitHub repository.
+2. In the left list, click **Daily Stock Ingestion Pipeline**.
+3. Click the **Run workflow** dropdown on the right side.
+4. Click the green **Run workflow** button. It will start running instantly.
+
+### 11.4 How to View & Download Logs
+
+1. Go to the **Actions** tab and click on the latest run in the list (it will have a green checkmark if it succeeded or a red cross if it failed).
+2. Scroll to the very bottom to find the **Artifacts** section.
+3. Click on the file named `ingestion-logs-[run-id]`. This downloads a ZIP file containing the logs (`ingest_corporate_actions.log`, `ingest_live_news.log`, `ingest_custom_scan.log`) from that day's run.
