@@ -27,6 +27,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 #   Console (stdout): all progress/info messages
 #   File (logs/ingest_custom_scan.log): ONLY skipped/duplicate records
 # ---------------------------------------------------------------------------
+logs_dir = os.path.join(PROJECT_ROOT, "logs")
+os.makedirs(logs_dir, exist_ok=True)
+
 logger = logging.getLogger("ingest_custom_scan")
 logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler(sys.stdout)
@@ -36,7 +39,7 @@ logger.addHandler(console_handler)
 skip_logger = logging.getLogger("skipped_custom_scan")
 skip_logger.setLevel(logging.INFO)
 skip_logger.propagate = False
-skip_file_handler = logging.FileHandler(os.path.join(PROJECT_ROOT, "logs", "ingest_custom_scan.log"), encoding='utf-8')
+skip_file_handler = logging.FileHandler(os.path.join(logs_dir, "ingest_custom_scan.log"), encoding='utf-8')
 skip_file_handler.setFormatter(logging.Formatter('%(asctime)s [SKIPPED] %(message)s'))
 skip_logger.addHandler(skip_file_handler)
 
