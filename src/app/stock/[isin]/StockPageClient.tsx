@@ -70,8 +70,7 @@ const fmtPrice = (v: unknown) => {
 const fmtCr = (v: unknown) => {
   const n = num(v);
   if (n == null) return "—";
-  const cr = n / 1e7;
-  return `₹${cr.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr.`;
+  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr.`;
 };
 
 const fmtPct = (v: unknown) => {

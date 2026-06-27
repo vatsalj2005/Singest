@@ -50,7 +50,7 @@ const pctCls = (v: unknown) => {
 const fmtCr = (v: unknown) => {
   const n = num(v);
   if (n == null) return "—";
-  return `₹${(n / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 };
 
 type Col = {
