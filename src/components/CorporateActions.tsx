@@ -12,22 +12,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CORPORATE_ACTION_TABS, type CorporateActionTabKey } from "@/lib/types";
 
 type Row = Record<string, string | number | null>;
 
-const TABS = [
-  { key: "dividends", label: "Dividends" },
-  { key: "bonus", label: "Bonus" },
-  { key: "splits", label: "Splits" },
-  { key: "rights", label: "Rights" },
-  { key: "buybacks", label: "Buybacks" },
-  { key: "quarterly-results", label: "Quarterly Results" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
-
 type ColDef = { header: string; key: string; type: "date" | "price" | "text" };
 
-const COLS: Record<TabKey, ColDef[]> = {
+const COLS: Record<CorporateActionTabKey, ColDef[]> = {
   dividends: [
     { header: "Ex-Date", key: "ex_date", type: "date" },
     { header: "Announcement Date", key: "ann_date", type: "date" },
@@ -110,10 +101,10 @@ function truncate(s: string, n: number) {
 }
 
 export function CorporateActions({ isin }: { isin: string }) {
-  const [active, setActive] = useState<TabKey>("dividends");
-  const [loaded, setLoaded] = useState<Set<TabKey>>(new Set(["dividends"]));
+  const [active, setActive] = useState<CorporateActionTabKey>("dividends");
+  const [loaded, setLoaded] = useState<Set<CorporateActionTabKey>>(new Set(["dividends"]));
 
-  const [countsData, setCountsData] = useState<Record<TabKey, number> | null>(null);
+  const [countsData, setCountsData] = useState<Record<CorporateActionTabKey, number> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -128,7 +119,7 @@ export function CorporateActions({ isin }: { isin: string }) {
     };
   }, [isin]);
 
-  function selectTab(k: TabKey) {
+  function selectTab(k: CorporateActionTabKey) {
     setActive(k);
     setLoaded((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
   }
@@ -139,7 +130,7 @@ export function CorporateActions({ isin }: { isin: string }) {
 
       {/* Tab bar */}
       <div className="relative mb-4 flex flex-wrap items-end gap-1 border-b border-border/60">
-        {TABS.map((t) => {
+        {CORPORATE_ACTION_TABS.map((t) => {
           const isActive = t.key === active;
           const count = countsData?.[t.key];
           return (
@@ -170,7 +161,7 @@ export function CorporateActions({ isin }: { isin: string }) {
 
       {/* Tab content */}
       <div className="glass-card overflow-hidden rounded-xl">
-        {TABS.map((t) =>
+        {CORPORATE_ACTION_TABS.map((t) =>
           t.key === active && loaded.has(t.key) ? (
             <TabPanel key={t.key} tab={t.key} isin={isin} />
           ) : null,
@@ -180,7 +171,7 @@ export function CorporateActions({ isin }: { isin: string }) {
   );
 }
 
-function TabPanel({ tab, isin }: { tab: TabKey; isin: string }) {
+function TabPanel({ tab, isin }: { tab: CorporateActionTabKey; isin: string }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -249,7 +240,8 @@ function TabPanel({ tab, isin }: { tab: TabKey; isin: string }) {
   }
 
   if (rows.length === 0) {
-    const label = TABS.find((t) => t.key === tab)?.label.toLowerCase() ?? "records";
+    const label =
+      CORPORATE_ACTION_TABS.find((t) => t.key === tab)?.label.toLowerCase() ?? "records";
     return (
       <div className="animate-[singest-stagger_0.3s_ease-out] flex flex-col items-center gap-2 p-12 text-center text-sm text-muted-foreground">
         <Inbox className="h-8 w-8 opacity-50" />

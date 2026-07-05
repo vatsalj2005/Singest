@@ -279,8 +279,12 @@ Here is the complete list of files in the Singest project, detailing the name an
 - [`src/lib/db.server.ts`](file:///e:/Signalz/Singest/src/lib/db.server.ts):
   - **`getPool()`**: Creates or returns a single, shared connection pool to our database so the website does not overload the database with duplicate connection pipes.
   - **`query(text, params)`**: Takes a SQL query string and parameter values, runs it through the database pool, and returns the resulting records.
-- [`src/lib/utils.ts`](file:///e:/Signalz/Singest/src/lib/utils.ts):
-  - **`cn(...inputs)`**: Combines CSS class names and merges Tailwind CSS overrides.
+- [`src/lib/format.ts`](file:///e:/Signalz/Singest/src/lib/format.ts):
+  - Contains shared and standardized helper functions for formatting prices, percentages, market cap badges, integers, decimals, and relative timestamps (e.g., `fmtPrice()`, `fmtPct()`, `mcapBadge()`, `timeAgo()`).
+- [`src/lib/types.ts`](file:///e:/Signalz/Singest/src/lib/types.ts):
+  - Defines the core type interfaces for stock overview summaries, detailed screener table rows, news feed articles, news headlines, and corporate action tab categories.
+- [`src/lib/corporate-tables.ts`](file:///e:/Signalz/Singest/src/lib/corporate-tables.ts):
+  - Maps corporate action types (dividends, splits, quarterly results, etc.) to database table names.
 
 ### 7.4 UI Components (`src/components/`)
 
@@ -315,12 +319,10 @@ Here is the complete list of files in the Singest project, detailing the name an
 - [`src/app/page.tsx` (Dashboard Homepage)](file:///e:/Signalz/Singest/src/app/page.tsx):
   - **`Dashboard()`**: Renders today's gainers/losers list, popular stocks grid, search, and news updates.
   - **`StockSearch()`**: Configures the search field, handles keyboard inputs, and controls the debounced suggestions dropdown.
-  - **`num(v)`**, **`fmt(v, d)`**, **`fmtPrice(v)`**, **`fmtPct(v)`**, **`pctClass(v)`**: Helper functions to clean and format number values.
 - [`src/app/screener/page.tsx` (Stock Screener)](file:///e:/Signalz/Singest/src/app/screener/page.tsx):
   - **`ScreenerPage()`**: Handles the stock screener page logic, filter updates, pagination buttons, and sorting table headers.
   - **`toggleClass(c)`**: Adds or removes a market cap class filter from the selected choices list.
-  - **`clearFilters()`**: Resets all search sliders and check boxes back to empty.
-  - **`num(v)`**, **`fmtN(v, d)`**, **`fmtPrice(v)`**, **`fmtCr(v)`**, **`fmtPct(v)`**, **`fmtInt(v)`**, **`pctCls(v)`**, **`mcapBadge(c)`**: Helper functions for text formatting.
+  - **`reset()`**: Resets all search sliders and check boxes back to empty.
 - [`src/app/stock/[isin]/page.tsx`](file:///e:/Signalz/Singest/src/app/stock/[isin]/page.tsx):
   - **`generateMetadata({ params })`**: Fetches the company display name from the database server-side to set the browser title dynamically.
   - **`StockPage({ params })`**: Fetches the initial stock data and news on the server-side, preparing the page instantly before loading client components.
@@ -329,7 +331,7 @@ Here is the complete list of files in the Singest project, detailing the name an
   - **`IndicatorCard({ label, value, icon })`**: A card component to display details like Bollinger Width.
   - **`SmaCard({ label, sma, ltp })`**: A card component comparing the current price against a Simple Moving Average.
   - **`RsiGauge({ value })`**: Renders a speedometer-style arc with an SVG needle mapped to the RSI score.
-  - **`num(v)`**, **`fmt(v, digits)`**, **`fmtPrice(v)`**, **`fmtCr(v)`**, **`fmtPct(v)`**, **`pctClass(v)`**, **`timeAgo(iso)`**, **`mcapBadgeColor(c)`**, **`sentimentColor(s)`**: Helper functions for layout data formatting.
+  - **`sentimentColor(s)`**: Helper function to determine visual style classes for news sentiment badges.
 
 ### 7.6 Server API Routes (`src/app/api/`)
 

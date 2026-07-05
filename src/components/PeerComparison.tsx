@@ -3,68 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronUp, ChevronsUpDown, Users } from "lucide-react";
-
-type Peer = {
-  isin: string;
-  sym: string;
-  disp_sym: string;
-  ltp: number | null;
-  pperchange: number | null;
-  mcap: number | null;
-  pe: number | null;
-  div_yeild: number | null;
-  roce: number | null;
-  roe: number | null;
-  eps: number | null;
-  pb: number | null;
-  net_profit_margin: number | null;
-  volume: number | null;
-};
-
-const num = (v: unknown): number | null =>
-  v == null || v === "" || Number.isNaN(Number(v)) ? null : Number(v);
-
-const fmtN = (v: unknown, d = 2) => {
-  const n = num(v);
-  return n == null
-    ? "—"
-    : n.toLocaleString("en-IN", { maximumFractionDigits: d, minimumFractionDigits: d });
-};
-const fmtPrice = (v: unknown) => {
-  const n = num(v);
-  return n == null
-    ? "—"
-    : `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
-};
-const fmtPct = (v: unknown) => {
-  const n = num(v);
-  return n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
-};
-const pctCls = (v: unknown) => {
-  const n = num(v);
-  if (n == null) return "text-muted-foreground";
-  if (n > 0) return "text-emerald-400";
-  if (n < 0) return "text-rose-400";
-  return "text-muted-foreground";
-};
-const fmtCr = (v: unknown) => {
-  const n = num(v);
-  if (n == null) return "—";
-  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-};
+import { num, fmtPrice, fmtPct, fmtCr, fmtN, pctCls } from "@/lib/format";
+import type { PeerRow } from "@/lib/types";
 
 type Col = {
-  key: keyof Peer | "idx";
+  key: keyof PeerRow | "idx";
   header: string;
   sortable: boolean;
   align?: "left" | "right";
-  render: (p: Peer, i: number, isCurrent: boolean) => React.ReactNode;
+  render: (p: PeerRow, i: number, isCurrent: boolean) => React.ReactNode;
 };
 
 export function PeerComparison({ isin }: { isin: string }) {
   const [peersData, setPeersData] = useState<{
     mcapclass: string | null;
-    peers: Peer[];
+    peers: PeerRow[];
     currentIsin: string;
   } | null>(null);
   const [peersLoading, setPeersLoading] = useState(true);
@@ -89,7 +42,7 @@ export function PeerComparison({ isin }: { isin: string }) {
     };
   }, [isin]);
 
-  const [sortKey, setSortKey] = useState<keyof Peer>("mcap");
+  const [sortKey, setSortKey] = useState<keyof PeerRow>("mcap");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const sorted = useMemo(() => {
@@ -173,7 +126,7 @@ export function PeerComparison({ isin }: { isin: string }) {
     { key: "eps", header: "EPS", sortable: true, align: "right", render: (p) => fmtPrice(p.eps) },
   ];
 
-  function toggleSort(k: keyof Peer) {
+  function toggleSort(k: keyof PeerRow) {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
       setSortKey(k);
@@ -201,7 +154,7 @@ export function PeerComparison({ isin }: { isin: string }) {
               <thead>
                 <tr className="border-b border-primary/30 bg-muted/40">
                   {cols.map((c) => {
-                    const isSorted = c.sortable && sortKey === (c.key as keyof Peer);
+                    const isSorted = c.sortable && sortKey === (c.key as keyof PeerRow);
                     const Icon = isSorted
                       ? sortDir === "asc"
                         ? ChevronUp
@@ -210,7 +163,7 @@ export function PeerComparison({ isin }: { isin: string }) {
                     return (
                       <th
                         key={String(c.key)}
-                        onClick={c.sortable ? () => toggleSort(c.key as keyof Peer) : undefined}
+                        onClick={c.sortable ? () => toggleSort(c.key as keyof PeerRow) : undefined}
                         className={`whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground ${
                           c.align === "right" ? "text-right" : "text-left"
                         } ${c.sortable ? "cursor-pointer hover:text-foreground" : ""}`}

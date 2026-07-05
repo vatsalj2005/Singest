@@ -6,7 +6,6 @@ from datetime import datetime, date
 import psycopg2
 from dotenv import load_dotenv
 
-# Project root
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # Load environment variables (from Backend/.env or parent Next.js root folder .env)

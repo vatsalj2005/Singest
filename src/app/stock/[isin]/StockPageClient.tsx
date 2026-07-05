@@ -23,6 +23,8 @@ import {
 import { CorporateActions } from "@/components/CorporateActions";
 import { PeerComparison } from "@/components/PeerComparison";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { num, fmtPrice, fmtPct, fmtCr, fmtN, pctCls, mcapBadge, timeAgo } from "@/lib/format";
+import type { NewsHeadline } from "@/lib/types";
 
 import {
   BarChart,
@@ -37,75 +39,6 @@ import {
 } from "recharts";
 
 type Row = Record<string, string | number | null>;
-type NewsLite = {
-  article_id: number | string;
-  title: string;
-  publish_date: string | null;
-  overall_sentiment: string | null;
-  category: string | null;
-  sub_category: string | null;
-};
-
-const num = (v: unknown): number | null =>
-  typeof v === "number" && !Number.isNaN(v)
-    ? v
-    : typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))
-      ? Number(v)
-      : null;
-
-const fmt = (v: unknown, digits = 2) => {
-  const n = num(v);
-  return n == null
-    ? "—"
-    : n.toLocaleString("en-IN", { maximumFractionDigits: digits, minimumFractionDigits: 2 });
-};
-
-const fmtPrice = (v: unknown) => {
-  const n = num(v);
-  return n == null
-    ? "—"
-    : `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
-};
-
-const fmtCr = (v: unknown) => {
-  const n = num(v);
-  if (n == null) return "—";
-  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr.`;
-};
-
-const fmtPct = (v: unknown) => {
-  const n = num(v);
-  if (n == null) return "—";
-  return `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
-};
-
-const pctClass = (v: unknown) => {
-  const n = num(v);
-  if (n == null) return "text-muted-foreground";
-  if (n > 0) return "text-emerald-400";
-  if (n < 0) return "text-rose-400";
-  return "text-muted-foreground";
-};
-
-function timeAgo(iso: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso).getTime();
-  if (Number.isNaN(d)) return "—";
-  const diff = Math.max(0, Date.now() - d) / 1000;
-  if (diff < 60) return `${Math.floor(diff)}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
-
-function mcapBadgeColor(c: string | null | undefined) {
-  if (!c) return "bg-muted/60 text-muted-foreground";
-  const k = c.toLowerCase();
-  if (k.includes("large")) return "bg-blue-500/15 text-blue-300 border-blue-500/30";
-  if (k.includes("mid")) return "bg-violet-500/15 text-violet-300 border-violet-500/30";
-  if (k.includes("small")) return "bg-teal-500/15 text-teal-300 border-teal-500/30";
-  return "bg-muted/60 text-muted-foreground border-border";
-}
 
 function sentimentColor(s: string | null) {
   if (!s) return "bg-muted/60 text-muted-foreground";
@@ -117,7 +50,7 @@ function sentimentColor(s: string | null) {
   return "bg-amber-500/15 text-amber-300 border-amber-500/30";
 }
 
-export function StockPageClient({ stock, news }: { stock: Row; news: NewsLite[] }) {
+export function StockPageClient({ stock, news }: { stock: Row; news: NewsHeadline[] }) {
   const pct = num(stock.pperchange);
   const up = (pct ?? 0) >= 0;
   const TrendIcon = up ? ArrowUpRight : ArrowDownRight;
@@ -131,10 +64,10 @@ export function StockPageClient({ stock, news }: { stock: Row; news: NewsLite[] 
     raw?: unknown;
   }> = [
     { label: "Market Cap", value: fmtCr(stock.mcap), icon: Briefcase },
-    { label: "P/E Ratio", value: fmt(stock.pe), icon: BarChart3 },
-    { label: "P/B Ratio", value: fmt(stock.pb), icon: Layers },
+    { label: "P/E Ratio", value: fmtN(stock.pe), icon: BarChart3 },
+    { label: "P/B Ratio", value: fmtN(stock.pb), icon: Layers },
     { label: "EPS", value: fmtPrice(stock.eps), icon: Coins },
-    { label: "Industry P/E", value: fmt(stock.ind_pe), icon: BarChart3 },
+    { label: "Industry P/E", value: fmtN(stock.ind_pe), icon: BarChart3 },
     {
       label: "Dividend Yield",
       value: fmtPct(stock.div_yeild),
@@ -252,7 +185,7 @@ export function StockPageClient({ stock, news }: { stock: Row; news: NewsLite[] 
               )}
               {stock.mcapclass != null && (
                 <span
-                  className={`rounded-md border px-2 py-0.5 text-xs font-medium ${mcapBadgeColor(
+                  className={`rounded-md border px-2 py-0.5 text-xs font-medium ${mcapBadge(
                     stock.mcapclass as string,
                   )}`}
                 >
@@ -267,7 +200,7 @@ export function StockPageClient({ stock, news }: { stock: Row; news: NewsLite[] 
               className={`mt-1 inline-flex items-center gap-1 text-sm font-medium ${trendColor}`}
             >
               <TrendIcon className="h-4 w-4" />
-              {fmt(stock.pchange)} ({fmtPct(stock.pperchange)})
+              {fmtN(stock.pchange)} ({fmtPct(stock.pperchange)})
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               Last updated: {timeAgo(stock.fetched_at as string | null)}
@@ -295,7 +228,7 @@ export function StockPageClient({ stock, news }: { stock: Row; news: NewsLite[] 
                   </div>
                   <div
                     className={`mt-3 text-2xl font-semibold tabular-nums ${
-                      isPct ? pctClass(k.raw) : ""
+                      isPct ? pctCls(k.raw) : ""
                     }`}
                   >
                     {k.value}
@@ -392,12 +325,12 @@ export function StockPageClient({ stock, news }: { stock: Row; news: NewsLite[] 
             <SmaCard label="SMA 200" sma={sma200} ltp={ltp} />
             <IndicatorCard
               label="Bollinger Width"
-              value={fmt(stock.day_bb_upper_sub_bb_lower)}
+              value={fmtN(stock.day_bb_upper_sub_bb_lower)}
               icon={Activity}
             />
             <IndicatorCard
               label="ATR (14) × 2"
-              value={fmt(stock.day_atr_14_current_candle_mul_2)}
+              value={fmtN(stock.day_atr_14_current_candle_mul_2)}
               icon={LineChartIcon}
             />
           </div>

@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db.server";
+import { CORPORATE_ACTION_TABLES } from "@/lib/corporate-tables";
 
 export const dynamic = "force-dynamic";
-
-const TABLES = {
-  dividends: "corporate_actions_dividends",
-  bonus: "corporate_actions_bonus",
-  splits: "corporate_actions_splits",
-  rights: "corporate_actions_rights",
-  buybacks: "corporate_actions_buybacks",
-  "quarterly-results": "corporate_actions_quarterly_results",
-} as const;
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ isin: string }> }) {
   try {
@@ -20,7 +12,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     };
 
     const entries = await Promise.all(
-      Object.entries(TABLES).map(async ([key, table]) => {
+      Object.entries(CORPORATE_ACTION_TABLES).map(async ([key, table]) => {
         const rows = await query<{ c: string | number }>(
           `SELECT COUNT(*)::int AS c FROM ${table} WHERE isin = $1`,
           [isin],

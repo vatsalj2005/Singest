@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db.server";
+import { CORPORATE_ACTION_TABLES } from "@/lib/corporate-tables";
 
 export const dynamic = "force-dynamic";
-
-const TABLES: Record<string, string> = {
-  dividends: "corporate_actions_dividends",
-  bonus: "corporate_actions_bonus",
-  splits: "corporate_actions_splits",
-  rights: "corporate_actions_rights",
-  buybacks: "corporate_actions_buybacks",
-  "quarterly-results": "corporate_actions_quarterly_results",
-};
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +14,7 @@ export async function GET(
       "Cache-Control": "no-store, max-age=0, must-revalidate",
     };
 
-    const table = TABLES[action];
+    const table = CORPORATE_ACTION_TABLES[action as keyof typeof CORPORATE_ACTION_TABLES];
     if (!table) {
       return NextResponse.json({ error: "Unknown action" }, { status: 404, headers });
     }

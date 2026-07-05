@@ -13,25 +13,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-
-type Row = {
-  isin: string;
-  sym: string;
-  disp_sym: string;
-  ltp: number | null;
-  pperchange: number | null;
-  mcap: number | null;
-  mcapclass: string | null;
-  pe: number | null;
-  pb: number | null;
-  div_yeild: number | null;
-  roce: number | null;
-  roe: number | null;
-  eps: number | null;
-  net_profit_margin: number | null;
-  price_perchng_1year: number | null;
-  volume: number | null;
-};
+import { fmtPrice, fmtPct, fmtCr, fmtN, fmtInt, pctCls, mcapBadge } from "@/lib/format";
+import type { ScreenerRow } from "@/lib/types";
 
 type Filters = {
   mcapclass: string[];
@@ -51,58 +34,7 @@ const EMPTY: Filters = {
   div_yield_min: "",
 };
 
-const num = (v: unknown): number | null =>
-  v == null || v === "" || Number.isNaN(Number(v)) ? null : Number(v);
-
-const fmtN = (v: unknown, d = 2) => {
-  const n = num(v);
-  return n == null
-    ? "—"
-    : n.toLocaleString("en-IN", { maximumFractionDigits: d, minimumFractionDigits: d });
-};
-
-const fmtPrice = (v: unknown) => {
-  const n = num(v);
-  return n == null
-    ? "—"
-    : `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
-};
-
-const fmtCr = (v: unknown) => {
-  const n = num(v);
-  if (n == null) return "—";
-  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-};
-
-const fmtPct = (v: unknown) => {
-  const n = num(v);
-  return n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
-};
-
-const fmtInt = (v: unknown) => {
-  const n = num(v);
-  return n == null ? "—" : n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
-};
-
-const pctCls = (v: unknown) => {
-  const n = num(v);
-  if (n == null) return "text-muted-foreground";
-  if (n > 0) return "text-emerald-400";
-  if (n < 0) return "text-rose-400";
-  return "text-muted-foreground";
-};
-
-function mcapBadge(c: string | null) {
-  if (!c) return "bg-muted/60 text-muted-foreground border-border";
-  const k = c.toLowerCase();
-  if (k.includes("large")) return "bg-blue-500/15 text-blue-300 border-blue-500/30";
-  if (k.includes("mid")) return "bg-violet-500/15 text-violet-300 border-violet-500/30";
-  if (k.includes("micro")) return "bg-amber-500/15 text-amber-300 border-amber-500/30";
-  if (k.includes("small")) return "bg-teal-500/15 text-teal-300 border-teal-500/30";
-  return "bg-muted/60 text-muted-foreground border-border";
-}
-
-const COLS: { key: keyof Row; header: string; sortable: boolean; align?: "right" }[] = [
+const COLS: { key: keyof ScreenerRow; header: string; sortable: boolean; align?: "right" }[] = [
   { key: "disp_sym", header: "Name", sortable: false },
   { key: "sym", header: "Symbol", sortable: false },
   { key: "ltp", header: "CMP (₹)", sortable: true, align: "right" },
@@ -167,7 +99,9 @@ export default function ScreenerPage() {
     return p.toString();
   }, [applied, sort, order, page]);
 
-  const [resultsData, setResultsData] = useState<{ rows: Row[]; total: number } | null>(null);
+  const [resultsData, setResultsData] = useState<{ rows: ScreenerRow[]; total: number } | null>(
+    null,
+  );
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsFetching, setResultsFetching] = useState(false);
 

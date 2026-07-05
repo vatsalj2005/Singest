@@ -2,35 +2,24 @@ import { notFound } from "next/navigation";
 import { query } from "@/lib/db.server";
 import { StockPageClient } from "./StockPageClient";
 import type { Metadata } from "next";
+import type { NewsHeadline } from "@/lib/types";
 
 type Row = Record<string, string | number | null>;
 
 async function getStockData(isin: string) {
-  try {
-    const rows = await query<Row>(`SELECT * FROM custom_scan WHERE isin = $1 LIMIT 1`, [isin]);
-    if (!rows[0]) return null;
+  const rows = await query<Row>(`SELECT * FROM custom_scan WHERE isin = $1 LIMIT 1`, [isin]);
+  if (!rows[0]) return null;
 
-    const news = await query<{
-      article_id: number | string;
-      title: string;
-      publish_date: string | null;
-      overall_sentiment: string | null;
-      category: string | null;
-      sub_category: string | null;
-    }>(
-      `SELECT article_id, title, publish_date, overall_sentiment, category, sub_category
-       FROM live_news
-       WHERE isin_code = $1
-       ORDER BY publish_date DESC NULLS LAST
-       LIMIT 10`,
-      [isin],
-    );
+  const news = await query<NewsHeadline>(
+    `SELECT article_id, title, publish_date, overall_sentiment, category, sub_category
+     FROM live_news
+     WHERE isin_code = $1
+     ORDER BY publish_date DESC NULLS LAST
+     LIMIT 10`,
+    [isin],
+  );
 
-    return { stock: rows[0], news };
-  } catch (error) {
-    console.error("Database query failed:", error);
-    return null;
-  }
+  return { stock: rows[0], news };
 }
 
 export async function generateMetadata({

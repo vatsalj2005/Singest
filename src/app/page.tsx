@@ -13,64 +13,22 @@ import {
   LineChart as LineChartIcon,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-
-type ScanRow = {
-  isin: string;
-  sym: string;
-  disp_sym: string;
-  ltp: number | null;
-  pperchange: number | null;
-  mcapclass: string | null;
-};
-
-type NewsRow = {
-  article_id: number;
-  title: string;
-  text: string | null;
-  overall_sentiment: string | null;
-  category: string | null;
-  sub_category: string | null;
-  publish_date: string;
-  stock_name: string | null;
-  isin_code: string | null;
-  display_symbol: string | null;
-};
+import { fmtPct, fmtPrice, timeAgo } from "@/lib/format";
+import type { StockSummary, NewsArticle } from "@/lib/types";
 
 type Overview = {
   totalStocks: number;
-  topGainer: ScanRow | null;
-  topLoser: ScanRow | null;
-  popular: ScanRow[];
+  topGainer: StockSummary | null;
+  topLoser: StockSummary | null;
+  popular: StockSummary[];
 };
-
-function fmtPct(v: number | null | undefined) {
-  if (v == null || Number.isNaN(v)) return "—";
-  const s = v > 0 ? "+" : "";
-  return `${s}${v.toFixed(2)}%`;
-}
-
-function fmtPrice(v: number | null | undefined) {
-  if (v == null || Number.isNaN(v)) return "—";
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-}
-
-function timeAgo(iso: string) {
-  const d = new Date(iso).getTime();
-  const diff = Math.max(0, Date.now() - d) / 1000;
-  if (diff < 60) return `${Math.floor(diff)}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
 
 export default function Dashboard() {
   const [overviewData, setOverviewData] = useState<Overview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
-  const [overviewError, setOverviewError] = useState<unknown>(null);
 
-  const [newsDataState, setNewsDataState] = useState<{ news: NewsRow[] } | null>(null);
+  const [newsDataState, setNewsDataState] = useState<{ news: NewsArticle[] } | null>(null);
   const [newsLoading, setNewsLoading] = useState(true);
-  const [newsError, setNewsError] = useState<unknown>(null);
 
   useEffect(() => {
     let active = true;
@@ -86,7 +44,6 @@ export default function Dashboard() {
         .catch((err) => {
           console.error(err);
           if (active) {
-            setOverviewError(err);
             setOverviewLoading(false);
           }
         });
@@ -114,7 +71,6 @@ export default function Dashboard() {
         .catch((err) => {
           console.error(err);
           if (active) {
-            setNewsError(err);
             setNewsLoading(false);
           }
         });
@@ -276,7 +232,7 @@ function MoverCard({
   positive,
 }: {
   label: string;
-  row: ScanRow | null;
+  row: StockSummary | null;
   positive: boolean;
 }) {
   const Color = positive ? "text-emerald-400" : "text-rose-400";
@@ -305,7 +261,7 @@ function MoverCard({
   );
 }
 
-function NewsCard({ item }: { item: NewsRow }) {
+function NewsCard({ item }: { item: NewsArticle }) {
   const sentiment = (item.overall_sentiment ?? "").toLowerCase();
   const sentColor =
     sentiment === "positive"
@@ -349,7 +305,7 @@ function StockSearch() {
   }, [q]);
 
   const enabled = debounced.length >= 1;
-  const [results, setResults] = useState<ScanRow[]>([]);
+  const [results, setResults] = useState<StockSummary[]>([]);
   const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {

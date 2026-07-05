@@ -1,7 +1,6 @@
 import pg from "pg";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __singestPool: pg.Pool | undefined;
 }
 
@@ -22,6 +21,6 @@ export function getPool(): pg.Pool {
 
 export async function query<T = unknown>(text: string, params: unknown[] = []): Promise<T[]> {
   const pool = getPool();
-  const res = await pool.query(text, params as never);
+  const res = await pool.query(text, params);
   return res.rows as T[];
 }

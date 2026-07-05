@@ -17,7 +17,7 @@ function apply(theme: Theme) {
   try {
     localStorage.setItem("singest-theme", theme);
   } catch {
-    /* ignore */
+    // Ignore errors caused by restricted localStorage access (e.g., in Safari private mode or sandboxed iframes).
   }
 }
 
