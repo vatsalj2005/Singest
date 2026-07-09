@@ -1,502 +1,285 @@
-# Singest — Indian Equity Markets Dashboard
-
-Welcome to the documentation for **Singest**, a simple, high-performance website for checking and screening stocks in the Indian stock market (NSE and BSE).
-
-This guide is written in **simple, plain English** to explain what technologies are used, how the system's architecture and api calls are structured, how the core algorithms work, and what every single file and function in this project does.
-
----
-
-## 1. What is Singest & Why is it Needed?
-
-Singest is a dashboard that helps regular people check the health of different public companies (like Reliance, TCS, or Infosys) listed on the stock market.
-
-It does three main things:
-
-1. **Dashboard (Home Page)**: Gives you a quick look at the market. It shows today's **Top Gainer** (the stock that went up the most in price today), **Top Loser** (the stock that went down the most today), a list of **Popular Stocks**, and the latest financial **News**.
-2. **Screener Page**: A tool to filter and search through hundreds of stocks at once. For example, you can use it to find only "Large companies that have low debt and high profits."
-3. **Stock Details Page**: A detailed profile page for any specific company. It shows how the stock price has performed over time, key financial stats (like profits and earnings), technical charts, and corporate actions (like cash dividend payouts).
+<div align="center">
+  <h1>📈 Singest</h1>
+  <p><strong>Your Ultimate Indian Equity Markets Dashboard & Screener</strong></p>
+  <p>
+    Built for speed, power, and clarity. Singest empowers you to track, analyze, and screen stocks across the NSE and BSE with real-time technical indicators, live news, and comprehensive corporate actions.
+  </p>
+</div>
 
 ---
 
-## 2. What Singest is Made Using (The Tech Stack)
+## 🌟 Introduction
 
-Here is a list of the core tools and technologies used to build this website:
+Welcome to **Singest**! 
 
-- **Next.js 15 (App Router)**: The main website engine. It manages routes (web links) and lets us write server code (which talks directly to the database) and browser code (which creates interactive pages) in the same project.
-- **React 19**: A framework for building the user interface. It lets us create reusable blocks (components) like buttons, tables, and charts that update automatically when data changes.
-- **CockroachDB / PostgreSQL**: The database where all our stock information is stored. We connect to it using the standard `pg` (node-postgres) client library.
-- **Tailwind CSS**: A styling tool that lets us write design rules directly inside our page files, making it easy to create beautiful layouts and dark/light modes.
-- **Recharts**: A library used to draw charts, such as the bar chart of annual dividend payments and the vertical stock price performance chart.
-- **Lucide React**: A collection of clean, modern icons (like arrows, wallets, and search magnifying glasses) used throughout the dashboard.
+Finding the right stocks in the Indian stock market can feel like finding a needle in a haystack. Singest solves this by providing a lightning-fast, beautiful, and deeply powerful dashboard to analyze public companies (like Reliance, TCS, or Infosys).
 
----
+Whether you are looking for today's top gainers and losers, trying to filter thousands of stocks based on strict financial metrics (like high ROE and low Debt), or simply want to read the latest live market news—Singest brings everything into one unified, modern interface.
 
-## 3. The Stock Screener Page (In Simple Terms)
-
-### What is it?
-
-Imagine going to a giant market with 5,000 different boxes of fruit. Checking every single box one by one to find the freshest, cheapest fruit is impossible.
-The **Stock Screener** is like a magic sieve or filter. You tell it exactly what you want—for example, "show me only large sweet apples that cost less than ₹20"—and it instantly filters out everything else, leaving you with a clean, short list.
-
-### Why is it needed?
-
-There are thousands of companies listed on the stock exchange. A normal person cannot check each one individually. The Screener is needed to instantly filter out bad or irrelevant stocks, saving you hours of time and leaving you with a short list of high-quality companies to study.
-
-### How does it work?
-
-1. On the screen, you slide filter controls or check boxes (like setting a minimum Return on Equity percentage or choosing "Large Cap" size).
-2. When you click **Apply Filters**, the website sends these choices to the server.
-3. The server builds a database search request (a SQL query) that asks the database to find only the rows that match all your chosen rules.
-4. The database replies with the matching stocks, and the website shows them in a clean, scrollable table.
-
-### Where does the data come from?
-
-The Screener page reads directly from a table called **`custom_scan`** inside our database. Every time you change filters or click a table header to sort the list (e.g., sort by highest dividend first), the database is asked to scan this table and return the sorted results.
+### ✨ What can you do with Singest?
+- **🏠 The Dashboard**: Get a birds-eye view of the market. See today's market movers, popular stocks, and breaking news.
+- **🔍 The Screener**: Filter through thousands of stocks instantly. Looking for "Large Cap stocks with a P/E under 15 and Dividend Yield over 3%"? The screener finds them in milliseconds.
+- **📊 Stock Deep-Dives**: Click into any company to see beautiful price charts, gauge technical indicators (like RSI and SMA), compare them side-by-side with industry peers, and track upcoming corporate actions like dividends and stock splits.
 
 ---
 
-## 4. Glossary of Terms (What They Mean & Where They Come From)
+## 📂 The Main Project Folder (Root Directory)
 
-Here is a guide explaining every technical and financial term used on the stock pages and screener, why they matter, and the exact database table column they read from.
+The root folder of the project acts as the control center. It doesn't contain the actual visual website code (that's inside `src/`), but rather it holds **configuration files**. These files tell the various tools we use (like Next.js, TypeScript, Tailwind, and Git) how to behave.
 
-### 4.1 Basic Stock Price Metrics
+Here is a detailed breakdown of every single file in the main folder:
 
-These metrics tell you how much a share costs and how much it is moving today. All of these points come from the **`custom_scan`** table in our database.
+### 1. `package.json` and `package-lock.json`
+* **What are they?** 
+  Think of `package.json` as the recipe for the project. It lists the project's name, the scripts we can run (like `npm run dev`), and all the external libraries the project needs to work (like React, Next.js, and Tailwind CSS). `package-lock.json` is a highly detailed, automatically generated receipt that locks in the exact version numbers of every library (and their sub-libraries) so that the project runs exactly the same on every computer.
+* **Why do we need them?** 
+  Without them, Node.js wouldn't know what packages to download when you type `npm install`, and it wouldn't know how to start the website.
+* **What if we delete them?** 
+  Deleting `package.json` breaks the project entirely because you lose the instructions on how to build it. Deleting `package-lock.json` is less fatal but risky, as reinstalling packages might pull in newer, untested versions of libraries that could break the code.
 
-| Term                                                     | What it means in simple terms                                                                      | Why it is useful                                                                                                                       | Database Column                                           |
-| :------------------------------------------------------- | :------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------- |
-| **LTP (Last Traded Price) / CMP (Current Market Price)** | The most recent price that someone paid for one share of this stock.                               | Tells you exactly how much it costs to buy a single share right now.                                                                   | `ltp`                                                     |
-| **Change %**                                             | How much the stock price has gone up or down today compared to when the market closed yesterday.   | Tells you if the stock is having a green (going up) day or a red (going down) day.                                                     | `pperchange`                                              |
-| **Volume**                                               | The total number of shares bought and sold by traders today.                                       | High volume means a lot of people are actively trading this stock right now.                                                           | `volume`                                                  |
-| **Open**                                                 | The price of the stock when the market opened for trading this morning.                            | Tells you how the stock started its day.                                                                                               | `open`                                                    |
-| **Prev Close**                                           | The final price of the stock when the market closed yesterday.                                     | Serves as the baseline to calculate today's price change.                                                                              | `bc_close`                                                |
-| **High / Low (1W, 1Y, 3Y, 5Y)**                          | The highest and lowest prices the stock has reached over these different time periods.             | Helps you see if the current price is close to its historical peaks or its lowest point.                                               | `high_1wk`, `high_1yr`, `low_1yr`, `high_3yr`, `high_5yr` |
-| **Away from 5Y High**                                    | How far the current stock price is below its highest point from the last 5 years, as a percentage. | Tells you how much the stock has fallen from its peak value. A higher negative percentage means it is much cheaper than it used to be. | `rt_away_from_5_year_high`                                |
+> 🎙️ **Interviewer Answer:** *"They manage the project's dependencies and scripts. `package.json` lists the required libraries, while `package-lock.json` locks their exact versions to ensure consistent builds across all environments."*
 
----
+### 2. `next.config.ts`
+* **What is it?** 
+  The master configuration file for the Next.js framework (the engine that powers our website).
+* **Why do we need it?** 
+  It allows us to change how Next.js behaves—for example, setting up custom redirects, tweaking the build process, or adding security headers. Right now, ours is mostly empty, meaning we are happily using the Next.js default settings.
+* **What if we delete it?** 
+  Next.js will recreate a default one or just use its built-in defaults. However, it's standard practice to keep it around in case we need to add rules later.
 
-### 4.2 Valuation Metrics (Is the stock cheap or expensive?)
+> 🎙️ **Interviewer Answer:** *"It's the primary configuration file for Next.js, used to customize routing, build processes, and framework-level settings."*
 
-These metrics help you see if a stock's price makes sense compared to the company's real profits. All of these points come from the **`custom_scan`** table.
+### 3. `tsconfig.json`, `next-env.d.ts`, and `tsconfig.tsbuildinfo`
+* **What are they?** 
+  These files control **TypeScript**. TypeScript is a tool that acts like a spell-checker for our code, making sure we don't accidentally pass a word (string) into a math calculation (number). 
+  * `tsconfig.json`: The rules file (e.g., how strict the spell-checker should be).
+  * `next-env.d.ts`: A helper file generated by Next.js that teaches TypeScript about Next.js specific features.
+  * `tsconfig.tsbuildinfo`: A temporary cache file that makes the spell-checker run much faster on subsequent runs by remembering what it already checked.
+* **Why do we need them?** 
+  They ensure our code is robust and free of silly typos before we ever run it in the browser.
+* **What if we delete them?** 
+  Deleting `tsconfig.json` will cause TypeScript to stop working, meaning you'll lose all error checking and autocomplete features in your code editor. Deleting the other two is harmless; they will just be regenerated automatically.
 
-| Term                                   | What it means in simple terms                                                                                                                   | Why it is useful                                                                                                                                                           | Database Column                                    |
-| :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
-| **Market Cap (Market Capitalization)** | The total value of the entire company if you bought every single share. Calculated as: `Total Shares × Current Share Price`.                    | Tells you how big the company is. Big companies are "Large Cap" (safe but grow slow), medium ones are "Mid Cap", and small ones are "Small Cap" (risky but can grow fast). | `mcap` (Rupees value), `mcapclass` (Size category) |
-| **P/E Ratio (Price-to-Earnings)**      | Compares the share price to the company's profit per share. If P/E is 15, it means you are paying ₹15 for every ₹1 of profit the company makes. | Helps you see if the stock is overpriced or bargain-priced compared to its actual earnings.                                                                                | `pe`                                               |
-| **P/B Ratio (Price-to-Book)**          | Compares the stock price to the value of the company's physical assets (like buildings, land, and cash) if it were shut down and sold today.    | Useful for checking if the stock price is backed by real, physical assets.                                                                                                 | `pb`                                               |
-| **EPS (Earnings Per Share)**           | The total profit of the company divided by the number of shares. It is the portion of profit allocated to each individual share.                | Tells you how much money a single share is actually earning for you.                                                                                                       | `eps`                                              |
-| **Industry P/E**                       | The average P/E ratio of all other companies in the same business sector.                                                                       | Helps you compare. If a stock's P/E is 10 but its Industry P/E is 30, the stock might be relatively cheap compared to its competitors.                                     | `ind_pe`                                           |
-| **Dividend Yield**                     | The percentage of the stock price that the company pays back to you in cash dividends each year.                                                | If the yield is 3% and you invest ₹100, the company pays you ₹3 in cash annually just for holding the stock.                                                               | `div_yeild`                                        |
+> 🎙️ **Interviewer Answer:** *"They configure the TypeScript compiler. `tsconfig.json` enforces type-checking rules, `next-env.d.ts` provides Next.js specific types, and `tsbuildinfo` caches previous builds for faster compilation."*
 
----
+### 4. `eslint.config.js` and `.prettierrc`
+* **What are they?** 
+  These are the "code police" and "code beautifier" files.
+  * `eslint.config.js`: Tells ESLint how to scan our code for bad practices or bugs (like defining a variable but never using it).
+  * `.prettierrc`: Tells Prettier how to format our code (like how many spaces to use for indentation, or whether to use single or double quotes).
+* **Why do we need them?** 
+  They keep the codebase looking clean, uniform, and professional, no matter how many different people work on it.
+* **What if we delete them?** 
+  The code will still run perfectly fine, but over time, the code will become messy, disorganized, and harder to read.
 
-### 4.3 Efficiency & Growth Metrics (How healthy is the business?)
+> 🎙️ **Interviewer Answer:** *"They enforce code quality and styling. ESLint catches programmatic errors and bad practices, while Prettier enforces consistent code formatting across the team."*
 
-These show how well the company's managers run the business and grow its sales. All of these points come from the **`custom_scan`** table.
+### 5. `postcss.config.mjs`
+* **What is it?** 
+  A configuration file for PostCSS, which is a tool that transforms our CSS styles.
+* **Why do we need it?** 
+  We use Tailwind CSS to style our website. Tailwind uses PostCSS to process its special utility classes and convert them into standard, browser-readable CSS. This file simply tells the system: "Hey, make sure you use Tailwind CSS when processing styles."
+* **What if we delete it?** 
+  Tailwind CSS will completely break, and the entire website will lose its colors, spacing, and design, looking like a plain text document from 1995.
 
-| Term                                               | What it means in simple terms                                                                                             | Why it is useful                                                                                             | Database Column                                                                                                                                               |
-| :------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **ROE (Return on Equity)**                         | How much profit the company generates using the money invested by its owners (shareholders).                              | Tells you how efficiently the company uses your invested capital to make more money.                         | `roe`                                                                                                                                                         |
-| **ROCE (Return on Capital Employed)**              | Similar to ROE, but also includes borrowed money (debt).                                                                  | Shows how profitable the company is, taking all its funding sources (investments + bank loans) into account. | `roce`                                                                                                                                                        |
-| **EBITDA Margin**                                  | Profit percentage before subtracting interest on loans, taxes, and wear-and-tear of equipment (depreciation).             | Tells you how profitable the core day-to-day operations are, before bills and taxes get in the way.          | `ebidta_margin`                                                                                                                                               |
-| **Net Profit Margin**                              | The actual percentage of sales (revenue) left over as pure profit after paying absolutely all expenses, taxes, and bills. | A high margin (e.g. 20%) means the business is highly profitable and keeps costs low.                        | `net_profit_margin`                                                                                                                                           |
-| **Revenue**                                        | The total amount of money the company brings in from selling its products or services, before subtracting any costs.      | Tells you the scale of the business (total sales).                                                           | `revenue`                                                                                                                                                     |
-| **Revenue Growth (1Y)**                            | How much the company's total sales grew over the last 1 year, as a percentage.                                            | Tells you if the company is selling more stuff and expanding its market footprint.                           | `year_1_revenue_growth`                                                                                                                                       |
-| **QoQ Profit Growth**                              | How much the company's profit in the most recent quarter grew compared to the exact same quarter last year.               | Helps you see if profits are actively accelerating right now.                                                | `yoy_last_qtrly_profit_growth`                                                                                                                                |
-| **EPS Growth (1Y CAGR)**                           | The average yearly growth rate of earnings per share over a year.                                                         | Tells you if the profit per share is compounding at a healthy rate.                                          | `year_1_cagr_eps_growth`                                                                                                                                      |
-| **Free Cash Flow**                                 | The actual cash a company has leftover after paying for its day-to-day operations and buying any physical equipment.      | This is the "free cash" the company can spend on dividends, buying back shares, or paying off debt.          | `free_cash_flow`                                                                                                                                              |
-| **OCF Growth**                                     | The growth rate of the cash generated from the company's main operations.                                                 | Verifies if the cash flows are growing in line with the reported accounting profits.                         | `ocf_growth_on_yr`                                                                                                                                            |
-| **Price Performance (1W, 2W, 1M, 3M, 1Y, 3Y, 5Y)** | The percentage return of the stock price over these different historical time periods.                                    | Helps you see if the stock price has been rising or falling recently.                                        | `price_perchng_1week`, `price_perchng_2week`, `price_perchng_1mon`, `price_perchng_3mon`, `price_perchng_1year`, `price_perchng_3year`, `price_perchng_5year` |
+> 🎙️ **Interviewer Answer:** *"It configures PostCSS plugins. In this project, it specifically integrates Tailwind CSS, instructing the build tool to compile Tailwind's utility classes into standard CSS."*
 
----
+### 6. `.env` and `.env.example`
+* **What are they?** 
+  * `.env`: A hidden file that contains sensitive secrets, like passwords and the `DATABASE_URL` used to connect to our CockroachDB/PostgreSQL database.
+  * `.env.example`: A safe, empty template showing what the `.env` file *should* look like, without giving away the actual passwords.
+* **How are the database connections actually made using this file?**
+  When the website starts, it doesn't just magically know where the database is. Here is the exact step-by-step wiring:
+  1. The `.env` file contains a connection string that looks like this: `DATABASE_URL="postgresql://username:password@hostname:port/database_name"`.
+  2. **In the Next.js Website**: Inside the file `src/lib/db.server.ts`, the code reads `process.env.DATABASE_URL`. It takes that string and feeds it into the `pg` (node-postgres) library to create a **"Connection Pool"**.
+     * **What is a Connection Pool?** Imagine calling a busy restaurant. If they only have one telephone line (one connection), only one customer can order at a time. Everyone else gets a busy signal and has to wait. If 1,000 users visit our website at exactly the same time, opening 1,000 separate connections to the database would overwhelm and crash it. 
+     * A Connection Pool is like the restaurant hiring a receptionist with 20 telephone lines. The pool opens a small, manageable number of permanent connections (e.g., 20 "open pipes") to the database. When a user requests data, they "borrow" an open pipe, fetch the data in milliseconds, and instantly return the pipe to the pool for the next user.
+     * **How do 20 pipes serve 1,000 people?** The secret is extreme speed. A database query (like getting Reliance's stock price) often takes less than 5 milliseconds to finish. Because it's so fast, a single "pipe" can be borrowed, used, and returned 200 times in a single second! If you have 20 pipes, they can easily process 4,000 requests per second. If 1,000 people click a button at the *exact* same millisecond, 20 of them get served instantly, and the other 980 are placed in an invisible micro-queue. Because the turnaround time is 5ms, the entire queue of 1,000 people is completely cleared in just a quarter of a second (250ms). To the human eye, it feels instantaneous for everyone.
+     * **How do we scale to 10,000 users?** If traffic explodes to 10,000 users clicking at the exact same time, a 20-pipe pool would cause the queue to take 2-3 seconds to clear, making the website feel laggy. To handle 10,000 users seamlessly, you would do the following:
+       1. **Increase the Pool Size**: Change the configuration from 20 pipes to 100 pipes.
+       2. **Upgrade the Database**: Pay for a more powerful database server (more CPU/RAM) that can handle keeping 100 pipes open without breaking a sweat.
+       3. **Add Caching (Redis)**: Instead of hitting the database for common requests (like the top 10 gainers), you store that result in ultra-fast memory. Now, 9,000 out of 10,000 users just read the memory, and only 1,000 actually need to use the database pipes.
+       4. **Add a Connection Manager (PgBouncer)**: An external piece of software designed solely to expertly juggle tens of thousands of queued connections to the database efficiently.
+  3. **In the Python Backend**: Inside the Python ingestion scripts (like in `Backend/scripts/`), a library called `python-dotenv` scans the folder, finds the `.env` file, and loads it into memory. The script then calls `os.getenv("DATABASE_URL")` and passes that string to the `psycopg2` library to establish a secure link to the database, allowing it to insert fresh stock data.
+* **Why do we need them?** 
+  To keep our database passwords secure. We use `.env` locally to run the site, but we NEVER upload `.env` to GitHub so hackers can't steal our data. We upload `.env.example` instead, so other developers know what variables they need to fill in.
+* **What if we delete them?** 
+  Deleting `.env` will cause the website (and the Python backend) to instantly crash because they won't know how to connect to the database anymore.
 
-### 4.4 Technical Indicators (Is it a good time to buy?)
+> 🎙️ **Interviewer Answer:** *"They handle environment-specific secrets. `.env` securely stores local credentials like the database URL, while `.env.example` serves as a safe, secret-free template for other developers."*
 
-These metrics look at price patterns to help time your purchase. All of these points come from the **`custom_scan`** table.
+### 7. `.gitignore`
+* **What is it?** 
+  A list of files and folders that Git (our version control system) should completely ignore and NEVER upload to the internet (GitHub).
+* **Why do we need it?** 
+  It prevents us from accidentally uploading massive folders (like `node_modules`), temporary files (like `.next/`), or sensitive secrets (like `.env`). We also added `code_walkthroughs/` to this file so these notes stay local to your machine.
+* **What if we delete it?** 
+  You would accidentally upload gigabytes of junk files and highly sensitive database passwords to GitHub, causing a massive security risk and slowing everything down.
 
-| Term                                       | What it means in simple terms                                                                                                                                                                                                                     | Why it is useful                                                                                                                 | Database Column                                           |
-| :----------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------- |
-| **RSI (Relative Strength Index)**          | A speedo-style score from 0 to 100 based on price movement speed. If it is **above 70**, the stock is "Overbought" (bought too fast, and price might fall soon). If it is **below 30**, it is "Oversold" (sold too fast, and might be a bargain). | Helps you avoid buying stocks at temporary price peaks.                                                                          | `day_rsi_14_current_candle`                               |
-| **SMA (Simple Moving Average - 50 / 200)** | The average price of the stock over the last 50 or 200 days.                                                                                                                                                                                      | If the current price is _above_ the average, the stock is in an uptrend (strong). If it is _below_, it is in a downtrend (weak). | `day_sma_50_current_candle`, `day_sma_200_current_candle` |
-| **Bollinger Width**                        | A metric that measures how wide the stock price swings are.                                                                                                                                                                                       | A higher width means the stock price jumps around wildly (highly volatile). A lower width means the price is stable.             | `day_bb_upper_sub_bb_lower`                               |
-| **ATR (14) × 2**                           | Average True Range multiplied by two. Measures how much the stock price typically swings up and down on a normal day.                                                                                                                             | Helps you understand daily price risk. High ATR means the price fluctuates a lot each day.                                       | `day_atr_14_current_candle_mul_2`                         |
+> 🎙️ **Interviewer Answer:** *"It tells Git which files and directories to ignore, preventing us from accidentally committing massive directories like `node_modules` or sensitive files like `.env` to source control."*
 
----
+### 8. `README.md`
+* **What is it?** 
+  The front page of our project. It's a Markdown document that explains what Singest is, how the architecture works, and how to run the project.
+* **Why do we need it?** 
+  If a new developer joins the project (or if you come back to it after 6 months), the README is the instruction manual that brings them up to speed.
+* **What if we delete it?** 
+  The code will still run perfectly, but anyone looking at the project will have no idea what it is or how to start it.
 
-### 4.5 Peer Comparison
-
-- **What is it?** A comparison table that shows how the selected company stacks up against its direct competitors of similar size (e.g., comparing a Large Cap stock against other Large Cap stocks).
-- **Why is it needed?** It is like comparing prices and ratings of similar products online. It helps you see if this stock is cheaper, more profitable, or faster-growing than other similar options.
-- **Where does the data come from?** The website looks at the current stock's `mcapclass` (e.g. Large Cap) in the database, and then searches the **`custom_scan`** table to load up to 10 other stocks that share the same `mcapclass`.
-
----
-
-### 4.6 Corporate Actions
-
-- **What is it?** A record of corporate events. A company does these actions when it wants to distribute profits, change its share structure, or update the public.
-- **Why is it needed?** To keep track of payouts and changes to your shares. For example, knowing when a company pays a dividend or splits its shares affects how much cash or how many shares you hold.
-- **Where does it come from?** The website queries six separate tables in the database using the stock's unique **`isin`** code:
-
-1.  **Dividends** (Cash payouts back to investors): Reads from `corporate_actions_dividends` table.
-2.  **Bonus** (Free extra shares given to you): Reads from `corporate_actions_bonus` table.
-3.  **Splits** (Splitting 1 share into multiple shares to lower the price): Reads from `corporate_actions_splits` table.
-4.  **Rights** (Letting existing holders buy more shares at a discount): Reads from `corporate_actions_rights` table.
-5.  **Buybacks** (The company buying back its own shares to increase value): Reads from `corporate_actions_buybacks` table.
-6.  **Quarterly Results** (Regular profit reports): Reads from `corporate_actions_quarterly_results` table.
-
----
-
-### 4.7 Live News
-
-- **What is it?** A list of the latest news stories about the selected company.
-- **Why is it needed?** To see if there is any positive or negative news that might cause the stock price to rise or fall.
-- **Where does it come from?** Reads from the **`live_news`** table in our database. It matches the news records with the stock by comparing the `isin_code` column, and displays up to 10 of the most recent articles.
-
----
-
-## 5. How the System Works (Core Algorithms & Workflows)
-
-Here are the key algorithms and workflows used on this website, explained in simple terms:
-
-### 5.1 Dynamic Query Builder (The Stock Screener Filter)
-
-When you apply filters on the Screener Page (like setting P/E to be between 10 and 20), the website does not download all stocks and filter them in your browser. Instead, it builds a SQL query dynamically.
-
-- **Algorithm**:
-  1. It starts with a base query: `SELECT * FROM custom_scan WHERE 1=1`.
-  2. It checks which filters you have set. For each active filter, it appends a condition (e.g., `AND pe >= $1` and `AND pe <= $2`).
-  3. The query utilizes placeholder parameters (`$1`, `$2`) instead of inserting numbers directly. This acts as a security shield (preventing SQL Injection).
-  4. It appends the sort rules (e.g., `ORDER BY mcap DESC`) and pagination limits (e.g., `LIMIT 50 OFFSET 0` for page 1) to fetch only the needed page.
-
-### 5.2 Autocomplete Search & Debouncing
-
-As you type in the search bar, the search box shows suggestions.
-
-- **Debouncing Algorithm**: To prevent sending a request on every single letter you type (which would slow down the database), the search bar uses a timer. When you type a letter, it waits for `300 milliseconds` of silence. If you type another letter before the timer ends, it resets the timer. It only sends the API request when you stop typing.
-- **Discard Out-of-Order Responses**: If you type fast and multiple requests are sent, they might return in the wrong order. The component tracks whether a request is still relevant using a local active boolean flag, discarding any results that belong to older search terms.
-
-### 5.3 Semicircle Needle Math (The RSI Gauge)
-
-The Relative Strength Index (RSI) is shown on a speedometer-style gauge. Since the gauge is a custom SVG semicircle, we have to calculate the coordinate points where the needle should point.
-
-- **Algorithm**:
-  1. The RSI value ranges from 0 to 100.
-  2. We convert this range to a semicircle angle (0 to 180 degrees).
-  3. The angle is calculated as `angle = 180 - (rsi_value / 100) * 180`.
-  4. We convert this degree angle to radians using `radians = (angle * Math.PI) / 180`.
-  5. Using trigonometry, we calculate the ending X and Y coordinate coordinates of the needle line:
-     - `X = Center_X + Radius * Math.cos(radians)`
-     - `Y = Center_Y - Radius * Math.sin(radians)`
-  6. The SVG draws a line from the center `(80, 80)` to `(X, Y)`.
-
-### 5.4 Theme Flashing Prevention
-
-Normally, when a page loads, there can be a brief "flash" of bright white before the theme styles load.
-
-- **Algorithm**: In the `layout.tsx` file, we place an inline script `<script>` at the very top of the HTML header. This script runs instantly _before_ any CSS or visual components are drawn on screen. It reads `localStorage` for the theme setting and immediately adds or removes the `.dark` class from the `<html>` tag.
-
-### 5.5 Parallel Counts Gathering (Corporate Actions)
-
-When viewing a stock, we display how many items exist in each corporate action tab (e.g., "Dividends (15)", "Splits (2)").
-
-- **Algorithm**: Querying 6 database tables one after another would make the page load slowly. The API handler launches all 6 count queries in parallel using `Promise.all()`. The server fires all queries at the database at the same instant and waits for all of them to return before sending a single grouped response back to the client.
+> 🎙️ **Interviewer Answer:** *"It is the primary documentation for the repository, serving as the entry point for new developers to understand the project architecture and local setup instructions."*
 
 ---
 
-## 6. Architecture & Client-Server Data Flow
+## 🎨 The `src/` Folder (Frontend Brain)
+The `src/` folder is where the actual website lives. It contains all the visual components, UI designs, and client-side logic.
 
-This website follows the **Next.js App Router Architecture**:
+### 9. `custom.d.ts`
+* **What is it?**
+  This is a tiny, two-line TypeScript configuration file containing: `declare module "*.css";`. 
+* **Why do we need it?**
+  By default, TypeScript only understands `.js`, `.ts`, `.tsx`, and `.json` files. If you try to write `import "./styles.css";` inside a React component, the strict TypeScript "spell-checker" will throw a massive red error saying it doesn't know what a `.css` file is. This file acts as a translator. It explicitly tells TypeScript: *"Hey, if you see any file ending in `.css` being imported, don't panic. Just accept it."*
+* **What if we delete it?**
+  Your code will technically still run perfectly fine in the browser because the actual bundler knows how to handle CSS. However, your code editor (like VS Code) and the TypeScript compiler will immediately light up with annoying red squiggly error lines everywhere you import a CSS file.
 
-1.  **Browser (Client Side)**: The user interacts with the UI. Components manage their own state (using React's `useState`).
-2.  **API Requests (Data Fetching)**: Client components use `fetch` to ask for data from our API route handlers (under `/src/app/api`).
-3.  **Database Connection (Server Side)**: The API route handlers run on the server. They connect securely to CockroachDB using a connection pool, retrieve database rows, and send them back to the client in JSON format.
-4.  **Security**: The database credentials are kept safe on the server (using `.env` variables) and are never exposed to the user's browser.
+> 🎙️ **Interviewer Answer:** *"It's a TypeScript declaration file that explicitly teaches the TypeScript compiler how to handle `.css` file imports, preventing compilation errors when importing styles directly into components."*
 
-### 6.1 List of API Route Handlers
+### 10. `styles.css`
+* **What is it?**
+  This is the master design file for the entire website. It doesn't just hold random colors; it is a highly structured **Design System**. 
+  1. **Tailwind Initialization:** It boots up the Tailwind CSS engine (using the modern v4 syntax).
+  2. **The Color Palette:** It defines every single color used in the app in `oklch` (a modern, mathematically precise color space for ultra-vibrant colors) for both light and dark modes.
+  3. **Glassmorphism:** It creates custom, reusable CSS classes for the "frosted glass" effect you see on cards and popups across the dashboard.
+  4. **Micro-Animations:** It defines smooth animations like `page-transition` so data elegantly glides into place.
+* **Why do we need it?**
+  Without this file, the website would be a plain, white, unformatted HTML document. Furthermore, by defining our colors as variables here (like `--primary`), if we ever want to rebrand the entire website, we only have to change *one single line* in this file, and the entire app instantly updates.
+* **🛠️ Why was VS Code throwing red error lines here?**
+  Tailwind CSS v4 is so cutting-edge that it invented brand new CSS commands (like `@theme`, `@utility`, and `@source`) that don't exist in the official CSS rulebook yet. VS Code's default CSS spell-checker panics when it sees them. We fixed this by creating `.vscode/settings.json` with `"css.validate": false` to turn off the outdated spell-checker.
+* **What if we delete it?**
+  The entire Next.js application will lose all styling, colors, animations, and Tailwind functionality.
 
-- **`/api/market-overview`**:
-  - **Method**: `GET`
-  - **What it does**: Queries the database to find today's top gainer, top loser, and a hardcoded list of popular stocks.
-  - **Table queried**: `custom_scan`
-- **`/api/news`**:
-  - **Method**: `GET`
-  - **What it does**: Queries the database for the 10 most recent news articles.
-  - **Table queried**: `live_news`
-- **`/api/search?q=[term]`**:
-  - **Method**: `GET`
-  - **What it does**: Takes a query string and returns matching symbols or names for autocomplete.
-  - **Table queried**: `custom_scan`
-- **`/api/screener`**:
-  - **Method**: `GET` (Accepts filters like `pe_min`, `roce_min`, `sort`, `page`, `limit` as URL parameters)
-  - **What it does**: Returns a filtered, sorted, and paginated list of stocks.
-  - **Table queried**: `custom_scan`
-- **`/api/screener/facets`**:
-  - **Method**: `GET`
-  - **What it does**: Returns the available market cap classes and total count of stocks.
-  - **Table queried**: `custom_scan`
-- **`/api/stock/[isin]`**:
-  - **Method**: `GET`
-  - **What it does**: Returns the complete record of a single stock, plus its recent news articles.
-  - **Tables queried**: `custom_scan`, `live_news`
-- **`/api/stock/[isin]/peers`**:
-  - **Method**: `GET`
-  - **What it does**: Returns up to 10 other stocks that share the same market capitalization class.
-  - **Table queried**: `custom_scan`
-- **`/api/stock/[isin]/corporate-counts`**:
-  - **Method**: `GET`
-  - **What it does**: Returns counts of corporate actions across all categories.
-  - **Tables queried**: `corporate_actions_dividends`, `corporate_actions_bonus`, `corporate_actions_splits`, `corporate_actions_rights`, `corporate_actions_buybacks`, `corporate_actions_quarterly_results`
-- **`/api/stock/[isin]/[action]`**:
-  - **Method**: `GET` (Where `[action]` is `dividends`, `splits`, `bonus`, etc.)
-  - **What it does**: Returns all corporate action logs of that specific type for the stock.
-  - **Tables queried**: The matching corporate action table.
+> 🎙️ **Interviewer Answer:** *"It's our global stylesheet powering the entire application's design system. It initializes Tailwind CSS v4, establishes our core `oklch` color palettes for light and dark modes, and defines custom animations and glassmorphism utilities for a premium UX."*
 
 ---
 
-## 7. File & Function Guide (Every File & Function Explained)
+## 🛠️ The `src/lib/` Folder (Backend Logic & Utils)
+This folder contains the brain of our backend data fetching, database connection management, and utility functions that power the frontend.
 
-Here is the complete list of files in the Singest project, detailing the name and purpose of every function and component in simple terms:
+### 11. `corporate-tables.ts`
+* **What is it?**
+  This file acts as a simple "translator" between the frontend website and the backend database. It holds a dictionary that translates the friendly frontend tab name (like `"dividends"`) into the exact database table name (like `"corporate_actions_dividends"`).
+* **Why do we need it?**
+  By keeping this mapping centralized, we ensure that both our data-fetching API routes and our component counters are looking at the exact same tables. If we ever rename a database table, we only have to change it in this one file, and the entire app adapts automatically.
 
-### 7.1 Configuration Files
-
-- [`package.json`](file:///e:/Signalz/Singest/package.json): Lists the commands we can run (like starting the site or building it) and defines the packages used.
-- [`next.config.ts`](file:///e:/Signalz/Singest/next.config.ts): Configures Next.js parameters, such as enabling TypeScript checking during compilation.
-- [`postcss.config.mjs`](file:///e:/Signalz/Singest/postcss.config.mjs): Configuration for the Tailwind CSS style parser.
-- [`tsconfig.json`](file:///e:/Signalz/Singest/tsconfig.json): Rules for the TypeScript compiler (ensuring we don't make typing mistakes).
-- [`eslint.config.js`](file:///e:/Signalz/Singest/eslint.config.js): Defines rules to scan our code for bugs, warnings, and formatting issues.
-- [`.prettierrc`](file:///e:/Signalz/Singest/.prettierrc): Settings that specify indentation and spacing rules to keep code neat.
-- [`.gitignore`](file:///e:/Signalz/Singest/.gitignore): Specifies which temporary folders and database configuration files should not be uploaded to GitHub.
-- [`.env.example`](file:///e:/Signalz/Singest/.env.example): A template showing the configuration keys needed to run the website.
-- [`next-env.d.ts`](file:///e:/Signalz/Singest/next-env.d.ts): Auto-generated file to help code editors recognize Next.js page variables.
-
-### 7.2 Styling Files
-
-- [`src/custom.d.ts`](file:///e:/Signalz/Singest/src/custom.d.ts): Lets the build system import stylesheet files directly.
-- [`src/styles.css`](file:///e:/Signalz/Singest/src/styles.css): The central stylesheet containing Tailwind CSS tokens, theme variables for light and dark modes, and CSS class rules for cards and background gradients.
-
-### 7.3 Data & Connection Helpers (`src/lib/`)
-
-- [`src/lib/db.server.ts`](file:///e:/Signalz/Singest/src/lib/db.server.ts):
-  - **`getPool()`**: Creates or returns a single, shared connection pool to our database so the website does not overload the database with duplicate connection pipes.
-  - **`query(text, params)`**: Takes a SQL query string and parameter values, runs it through the database pool, and returns the resulting records.
-- [`src/lib/format.ts`](file:///e:/Signalz/Singest/src/lib/format.ts):
-  - Contains shared and standardized helper functions for formatting prices, percentages, market cap badges, integers, decimals, and relative timestamps (e.g., `fmtPrice()`, `fmtPct()`, `mcapBadge()`, `timeAgo()`).
-- [`src/lib/types.ts`](file:///e:/Signalz/Singest/src/lib/types.ts):
-  - Defines the core type interfaces for stock overview summaries, detailed screener table rows, news feed articles, news headlines, and corporate action tab categories.
-- [`src/lib/corporate-tables.ts`](file:///e:/Signalz/Singest/src/lib/corporate-tables.ts):
-  - Maps corporate action types (dividends, splits, quarterly results, etc.) to database table names.
-
-### 7.4 UI Components (`src/components/`)
-
-- [`src/components/ThemeToggle.tsx`](file:///e:/Signalz/Singest/src/components/ThemeToggle.tsx):
-  - **`ThemeToggle()`**: Renders a button that lets the user switch between Dark and Light mode. It toggles the `.dark` class on the page wrapper and saves the user's choice in browser storage.
-- [`src/components/CorporateActions.tsx`](file:///e:/Signalz/Singest/src/components/CorporateActions.tsx):
-  - **`CorporateActions({ isin })`**: The main container component that draws the corporate actions area, coordinates the tabs, and fetches summary totals.
-  - **`TabPanel({ tab, isin })`**: Renders the detail cards or tables for the selected tab (e.g. "Dividends").
-  - **`DividendChart({ rows })`**: Renders a bar chart showing the historical cash dividend amounts over time.
-  - **`fmtDate(v)`**: Formats raw dates into a readable date string (e.g. `22 Jun 2026`).
-  - **`isFuture(v)`**: Checks if a date is in the future.
-  - **`fmtPrice(v)`**: Formats a raw number into Indian currency style (e.g. `₹150.50`).
-  - **`fmtText(v)`**: Safely prints text or a placeholder dash if empty.
-  - **`truncate(s, n)`**: Truncates long strings to fit inside tables.
-- [`src/components/PeerComparison.tsx`](file:///e:/Signalz/Singest/src/components/PeerComparison.tsx):
-  - **`PeerComparison({ isin })`**: Loads and displays a comparison grid showing metrics for the current company alongside its closest competitors.
-  - **`num(v)`**: Sanitizes input value into a number or returns null.
-  - **`fmt(v, digits)`**: Formats numerical decimals with commas.
-  - **`fmtPrice(v)`**: Formats numerical value as Rupee text.
-  - **`fmtCr(v)`**: Formats large company valuations in Crores (₹10,000,000).
-  - **`fmtPct(v)`**: Formats a decimal as a percentage with a positive `+` or negative `-` sign.
-  - **`pctClass(v)`**: Returns color classes (green for positive, red for negative, grey for zero) to style return percentages.
-
-### 7.5 Routing & App Pages (`src/app/`)
-
-- [`src/app/layout.tsx`](file:///e:/Signalz/Singest/src/app/layout.tsx):
-  - **`RootLayout({ children })`**: The layout shell that provides the page header, logo link, and light/dark theme initializer.
-- [`src/app/error.tsx`](file:///e:/Signalz/Singest/src/app/error.tsx):
-  - **`ErrorPage({ error, reset })`**: An error screen that handles any crashes and provides a retry mechanism.
-- [`src/app/not-found.tsx`](file:///e:/Signalz/Singest/src/app/not-found.tsx):
-  - **`NotFound()`**: Standard 404 message page when a link is invalid.
-- [`src/app/page.tsx` (Dashboard Homepage)](file:///e:/Signalz/Singest/src/app/page.tsx):
-  - **`Dashboard()`**: Renders today's gainers/losers list, popular stocks grid, search, and news updates.
-  - **`StockSearch()`**: Configures the search field, handles keyboard inputs, and controls the debounced suggestions dropdown.
-- [`src/app/screener/page.tsx` (Stock Screener)](file:///e:/Signalz/Singest/src/app/screener/page.tsx):
-  - **`ScreenerPage()`**: Handles the stock screener page logic, filter updates, pagination buttons, and sorting table headers.
-  - **`toggleClass(c)`**: Adds or removes a market cap class filter from the selected choices list.
-  - **`reset()`**: Resets all search sliders and check boxes back to empty.
-- [`src/app/stock/[isin]/page.tsx`](file:///e:/Signalz/Singest/src/app/stock/[isin]/page.tsx):
-  - **`generateMetadata({ params })`**: Fetches the company display name from the database server-side to set the browser title dynamically.
-  - **`StockPage({ params })`**: Fetches the initial stock data and news on the server-side, preparing the page instantly before loading client components.
-- [`src/app/stock/[isin]/StockPageClient.tsx`](file:///e:/Signalz/Singest/src/app/stock/[isin]/StockPageClient.tsx):
-  - **`StockPageClient({ stock, news })`**: Handles the layout grid of key metrics cards, price return charts, indicators, and recent news list.
-  - **`IndicatorCard({ label, value, icon })`**: A card component to display details like Bollinger Width.
-  - **`SmaCard({ label, sma, ltp })`**: A card component comparing the current price against a Simple Moving Average.
-  - **`RsiGauge({ value })`**: Renders a speedometer-style arc with an SVG needle mapped to the RSI score.
-  - **`sentimentColor(s)`**: Helper function to determine visual style classes for news sentiment badges.
-
-### 7.6 Server API Routes (`src/app/api/`)
-
-- [`src/app/api/market-overview/route.ts`](file:///e:/Signalz/Singest/src/app/api/market-overview/route.ts):
-  - **`GET()`**: Server function that queries the stock with the largest positive return (Gainer) and largest negative return (Loser) from `custom_scan`, plus 5 popular stocks.
-- [`src/app/api/news/route.ts`](file:///e:/Signalz/Singest/src/app/api/news/route.ts):
-  - **`GET()`**: Server function that returns the 10 most recent news articles sorted by publish date from the `live_news` table.
-- [`src/app/api/search/route.ts`](file:///e:/Signalz/Singest/src/app/api/search/route.ts):
-  - **`GET(request)`**: Server function that parses the autocomplete text query, searches the ticker or display symbol in `custom_scan` using a wildcard match, and returns the matches.
-- [`src/app/api/screener/route.ts`](file:///e:/Signalz/Singest/src/app/api/screener/route.ts):
-  - **`GET(request)`**: Server function that dynamically reads filters from the client's URL parameters, constructs a parameterized SQL query against `custom_scan`, and returns the matching stock list.
-- [`src/app/api/screener/facets/route.ts`](file:///e:/Signalz/Singest/src/app/api/screener/facets/route.ts):
-  - **`GET()`**: Server function that gathers metadata, including distinct cap classes and the total number of stocks.
-- [`src/app/api/stock/[isin]/route.ts`](file:///e:/Signalz/Singest/src/app/api/stock/[isin]/route.ts):
-  - **`GET(request, { params })`**: Server function that returns details for a single stock and its recent news using the ISIN code.
-- [`src/app/api/stock/[isin]/peers/route.ts`](file:///e:/Signalz/Singest/src/app/api/stock/[isin]/peers/route.ts):
-  - **`GET(request, { params })`**: Server function that looks up other stocks in the same market cap size class (`mcapclass`) to return peer stocks.
-- [`src/app/api/stock/[isin]/corporate-counts/route.ts`](file:///e:/Signalz/Singest/src/app/api/stock/[isin]/corporate-counts/route.ts):
-  - **`GET(request, { params })`**: Server function that executes 6 parallel queries to count rows matching the stock's ISIN in our corporate action tables.
-- [`src/app/api/stock/[isin]/[action]/route.ts`](file:///e:/Signalz/Singest/src/app/api/stock/[isin]/[action]/route.ts):
-  - **`GET(request, { params })`**: Server function that queries corporate events from the mapped table for the specified action (dividends, splits, etc.) and returns them sorted by ex-date.
-
----
-
-## 8. How to Run the Website (Commands)
-
-You can run these commands in your terminal to start, format, check, or build the website:
-
-```bash
-# 1. Install all dependencies
-npm install
-
-# 2. Start the site in development mode (view on http://localhost:3000)
-npm run dev
-
-# 3. Clean and auto-format spacing in the code
-npm run format
-
-# 4. Check for code syntax errors
-npm run lint
-
-# 5. Compile the website into an optimized package for hosting
-npm run build
-
-# 6. Start the compiled production package
-npm run start
+#### 🔍 Deep Dive: The Most Important Lines
+**Line 7: The TypeScript Guarantee**
+```typescript
+export const CORPORATE_ACTION_TABLES: Record<CorporateActionTabKey, string> = {
 ```
+* **`Record<CorporateActionTabKey, string>`**: This is where TypeScript flexes its muscles. It strictly enforces that every single key in this dictionary MUST perfectly match one of the predefined `CorporateActionTabKey` names. If a junior developer accidentally types `dividendss: "..."`, the code editor will instantly throw a massive red error before they even save the file. It's an unbreakable guardrail ensuring the frontend tabs always perfectly align with our backend tables.
 
----
-
-## 9. The Ingestion Backend (Python Data Sync)
-
-The `Backend/` folder contains a set of Python ingestion scripts that fetch corporate actions, live news, and technical scan metrics from the Dhan API and load them into CockroachDB. This runs in the background (manually or as a scheduled task) to populate the database so that the website doesn't hit API limits.
-
-### 9.1 Environment & Setup
-
-The Python backend scripts are configured to read the database details from **either** the local `Backend/.env` file or the Next.js parent root folder's `.env` file. You only need to configure `.env` once at the root directory of Singest.
-
-To install dependencies:
-
-```bash
-# Go to the Backend folder
-cd Backend
-
-# Install python packages
-pip install -r requirements.txt
+**Lines 8-13: The Translation Matrix**
+```typescript
+  dividends: "corporate_actions_dividends",
 ```
+* The Left Side (`dividends`) matches exactly what the user sees in the website's URL. The Right Side (`"corporate_actions_dividends"`) is what the Next.js API grabs to tell the database: `SELECT * FROM corporate_actions_dividends`.
 
-### 9.2 Running the Pipeline
+> 🎙️ **Interviewer Answer:** *"It's a configuration dictionary that securely maps frontend UI tab keys (like 'dividends') to their corresponding PostgreSQL database table names. It uses TypeScript's `Record` utility to guarantee type safety across our API routes."*
 
-You can run all ingestion scripts sequentially or individually from the root folder or the `Backend/` directory:
+### 12. `types.ts`
+* **What is it?**
+  If `package.json` is the recipe for the project, `types.ts` is the architectural blueprint for our data. Because we use TypeScript, we can't just pass random, undefined data around our app. This file contains the master definitions that tell the computer *exactly* what a "Stock" or a "News Article" looks like. 
+* **Why do we need it?**
+  Imagine the backend developer renames the stock price from `ltp` (Last Traded Price) to `currentPrice`. Without this file, the website would crash at runtime. By defining a central `StockSummary` type here, if the backend changes a name, TypeScript instantly throws a red error in the frontend code, preventing the bug from ever reaching the users.
 
-```bash
-# Run the combined pipeline (Corporate Actions -> Live News -> Custom Scan)
-python Backend/main.py
-
-# Run individual scripts
-python Backend/scripts/ingest_corporate_actions.py
-python Backend/scripts/ingest_live_news.py
-python Backend/scripts/ingest_custom_scan.py
+#### 🔍 Deep Dive: The Most Important Lines
+**Lines 13-20: The Lightweight Blueprint**
+```typescript
+export type StockSummary = {
+  isin: string;
+  sym: string;
+  disp_sym: string;
+  ltp: number | null;
+  pperchange: number | null;
+  mcapclass: string | null;
+};
 ```
+* This defines the absolute minimum amount of information we need to show a basic stock card. We use this lightweight blueprint for search results and the "Top Gainers" list to ensure we only pull 6 pieces of data from the database, keeping the app lightning-fast rather than downloading 50 heavy financial columns when we don't need them.
 
-### 9.3 Ingestion Files & Functions Guide
+**Lines 22-34: The "DRY" Extension**
+```typescript
+export type ScreenerRow = StockSummary & { ... }
+```
+* **The `&` Symbol:** This is a TypeScript "Intersection". Instead of manually copy-pasting the symbol and price from `StockSummary` into the `ScreenerRow`, we simply say: *"A ScreenerRow is everything a StockSummary is, **PLUS** all these extra financial columns."* It keeps the code "DRY" (Don't Repeat Yourself).
 
-#### 9.3.1 Orchestration Core (`Backend/main.py`)
+**Lines 71-80: TypeScript "Black Magic"**
+```typescript
+export const CORPORATE_ACTION_TABS = [ ... ] as const;
+export type CorporateActionTabKey = (typeof CORPORATE_ACTION_TABS)[number]["key"];
+```
+* **`as const`**: Locks the Javascript array in place, making it "read-only".
+* **The Black Magic (`[number]["key"]`)**: Instead of manually typing a list of allowed words (like `type TabKey = "dividends" | "bonus"`), this line automatically rips the exact string values directly out of the `CORPORATE_ACTION_TABS` array and magically transforms them into a strict type. It guarantees our types are never out of sync with our actual UI arrays!
 
-- **`update_last_run_date(script_name, run_date)`**: Updates the database metadata table (`ingestion_metadata`) with the date after a successful run.
-- **`run_script(script_path)`**: Executes a python script in a background subprocess, streaming standard output/error to the terminal.
-- **`main()`**: Runs all scripts in sequence and prints a summary.
+> 🎙️ **Interviewer Answer:** *"It's the central TypeScript definition file that dictates the canonical 'shape' of all data flowing between our API and the UI components. By keeping all types centralized, we prevent code drift and ensure type-safety across the entire stack."*
 
-#### 9.3.2 Corporate Actions Ingestion (`Backend/scripts/ingest_corporate_actions.py`)
+### 13. `format.ts`
+* **What is it?**
+  This file is the "Beautification Engine" of the application. When data comes out of the database, it is often raw and ugly (for example, a stock price might be `"123456.789123"`). This file contains tiny factory functions that take ugly data in, and spit beautiful, human-readable text out (like `"₹1,23,456.78"` or `"+5.4%"`).
+* **Why do we need it?**
+  By centralizing all formatting here, we guarantee absolute consistency. The stock price on the Dashboard will look exactly the same as the Screener. If we want to show 3 decimal places instead of 2 for all percentages, we only have to change one number in this file.
 
-- **`calculate_row_hash(record, act_type)`**: Calculates a SHA-256 hash using the fields `["isin", "ann_date", "ann_ltp", "ex_date"]` to identify unique actions.
-- **`load_existing_hashes(conn, table_name)`**: Loads all hashes already present in a table.
-- **`init_tables()`**: Creates all 6 corporate action tables if they do not exist.
-- **`fetch_corporate_actions(session, act_type, start_date, end_date, existing_keys)`**: Fetches paginated corporate action records from Dhan API.
-- **`insert_records(table_name, records)`**: Batch inserts unique new actions into the database.
+#### 🔍 Deep Dive: The Most Important Lines
+**Line 14: The Foundation (`num`)**
+```typescript
+export const num = (v: unknown): number | null => { ... }
+```
+* Databases sometimes send large numbers over the network as strings. This function safely catches anything (`unknown`), checks if it's a valid number, and forces it into a strict JavaScript Number (or returns `null`). Every other function uses this first to ensure they don't crash.
 
-#### 9.3.3 Live News Ingestion (`Backend/scripts/ingest_live_news.py`)
+**Line 25: The Indian Locale Engine (`fmtPrice`)**
+```typescript
+  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+```
+* The Indian numbering system places commas differently (Lakhs/Crores: `1,00,000`) than the West (`100,000`). Instead of writing complex math, we use JavaScript's built-in `toLocaleString("en-IN")` engine which handles the Indian comma logic perfectly and instantly.
 
-- **`load_existing_ids(conn)`**: Fetches all existing news article IDs.
-- **`init_table()`**: Creates the `live_news` table if it does not exist.
-- **`fetch_live_news(session, existing_keys)`**: Fetches the latest live market articles.
-- **`insert_records(records)`**: Batch inserts new news records.
+**Line 73: The "Green or Red" Painter (`pctCls`)**
+```typescript
+  if (n > 0) return "text-emerald-400";
+  if (n < 0) return "text-rose-400";
+```
+* This single, tiny function is responsible for coloring the entire website. If a stock goes up, it returns a Tailwind class for bright Emerald green. If it drops, Rose red. 
 
-#### 9.3.4 Custom Scan Ingestion (`Backend/scripts/ingest_custom_scan.py`)
+**Line 82: The Badge Generator (`mcapBadge`)**
+```typescript
+  if (k.includes("large")) return "bg-blue-500/15 text-blue-300 border-blue-500/30";
+```
+* It takes a boring string like "Large Cap" and spits out three distinct Tailwind classes: a translucent blue background, blue text, and a blue border. It highlights how logic and design are heavily mixed together in utility files to create beautiful UI dynamically.
 
-- **`load_existing_isins(conn)`**: Fetches all ISINs currently in the custom scan table.
-- **`init_table()`**: Creates the `custom_scan` table if it does not exist.
-- **`fetch_custom_scan(session, existing_keys)`**: Queries the technical screener metrics for all stocks.
-- **`upsert_records(records)`**: Upserts (inserts or updates) stock records in the database.
+> 🎙️ **Interviewer Answer:** *"It's our centralized utility library for data serialization and UI formatting. It safely coerces raw database values into strict types and applies locale-aware transformations (like Indian Rupee comma grouping) to ensure visual consistency across all components."*
 
----
+### 14. `db.server.ts`
+* **What is it?**
+  This is the bridge between our Next.js web application and the PostgreSQL database. Whenever the website needs to fetch a stock price or read a news article, it sends that request through this exact file. 
+* **Why do we need it?**
+  Connecting to a database is expensive and slow. If every single user who visited the website created a brand new, unique connection, the database would quickly run out of memory and crash. This file solves that by establishing a **Connection Pool** (a small, strict number of permanent connections that users have to "borrow" and "return").
 
-## 10. Hosting the Website on Vercel
+#### 🔍 Deep Dive: The Most Important Lines
+**Lines 8-19: The "Singleton" Hot-Reload Trick**
+```typescript
+if (!globalThis.__singestPool) {
+  globalThis.__singestPool = new pg.Pool({ ... });
+}
+```
+* When coding locally, Next.js constantly restarts the backend every time you save a file (Hot Reloading). If we just wrote `new pg.Pool()`, Next.js would open a brand new pool of connections every time you hit Save, creating hundreds of "zombie" connections that would instantly crash your database. By attaching the pool to `globalThis` (the absolute highest level of the computer's memory), it acts as a permanent anchor. It says: *"Does a pool already exist in deep memory? If yes, just reuse it."*
 
-To host this website online for free using Vercel, follow these simple steps:
+**Line 16: The Bottleneck (`max: 10`)**
+```typescript
+max: 10,
+```
+* **How Connections Work:** This is the most important configuration in the app. Imagine a restaurant with only 10 telephone lines. This tells the database: *"Never allow more than exactly 10 active queries to run at the exact same millisecond."* If 100 people visit the website at the exact same moment, the pool doesn't crash. It lets the first 10 people use the 10 pipes. Because a database query takes just 5 milliseconds, those 10 pipes are instantly returned to the pool and given to the next 10 people. We keep it at `10` because we are running on a free, low-power database tier. It acts as an absolute shield against traffic spikes.
 
-1. **Push your code to GitHub**: Create a repository on GitHub (or use your existing one) and push all project files.
-2. **Log into Vercel**: Visit [vercel.com](https://vercel.com) and create an account using your GitHub account login.
-3. **Import Project**: In the Vercel dashboard, click **Add New** ➔ **Project**. Select your GitHub repository from the list and click **Import**.
-4. **Configure Environment Variables**: Expand the **Environment Variables** dropdown and add the following two keys:
-   - **Key**: `DATABASE_URL`
-   - **Value**: _[Your CockroachDB Connection String]_
-   - **Key**: `CORP_ACT_LOOKAHEAD_DAYS`
-   - **Value**: `90`
-5. **Deploy**: Click the **Deploy** button. Vercel will build the Next.js app in the cloud, publish it, and give you a live shareable URL (like `singest.vercel.app`)!
+**Lines 22-26: The Secure Query Wrapper**
+```typescript
+export async function query<T = unknown>(text: string, params: unknown[] = []): Promise<T[]> { ... }
+```
+* Instead of making every component manually borrow a connection, we provide this neat helper function. Notice the `params` argument. This is critical for preventing **SQL Injection** (hackers typing malicious SQL into a search bar to delete the database). By forcing variables to go through `params` rather than writing them directly into the SQL string, the database driver automatically sanitizes the inputs, making the app bulletproof.
 
----
-
-## 11. Automated Daily Ingestion (GitHub Actions)
-
-Instead of running python scripts on your local PC every day, we use **GitHub Actions** to automate the process completely. The scripts run automatically in the cloud, and you can download the logs anytime.
-
-### 11.1 How it Works
-
-A workflow file is saved in `.github/workflows/ingest.yml`.
-
-- **Automatic Schedule**: It runs automatically every day at **8:00 AM Indian Standard Time (2:30 AM UTC)**.
-- **Manual Trigger**: You can trigger a run at any time using a button on GitHub.
-- **Artifacts**: At the end of every run, it saves the log files as an archive that you can download.
-
-### 11.2 Initial Setup (Secrets Configuration)
-
-Because your database string is private, you must save it securely on GitHub before the script can run:
-
-1. Go to your repository page on GitHub.
-2. Click the **Settings** tab at the top.
-3. In the left sidebar, click **Secrets and variables** ➔ **Actions**.
-4. Click the **New repository secret** button.
-5. Enter:
-   - **Name**: `DATABASE_URL`
-   - **Value**: _[Your CockroachDB Connection String]_
-6. Click **Add secret**.
-7. _(Optional)_ Add a second secret named `CORP_ACT_LOOKAHEAD_DAYS` if you want to change the default 90 days lookahead window.
-
-### 11.3 How to Run the Pipeline Manually
-
-1. Go to the **Actions** tab at the top of your GitHub repository.
-2. In the left list, click **Daily Stock Ingestion Pipeline**.
-3. Click the **Run workflow** dropdown on the right side.
-4. Click the green **Run workflow** button. It will start running instantly.
-
-### 11.4 How to View & Download Logs
-
-1. Go to the **Actions** tab and click on the latest run in the list (it will have a green checkmark if it succeeded or a red cross if it failed).
-2. Scroll to the very bottom to find the **Artifacts** section.
-3. Click on the file named `ingestion-logs-[run-id]`. This downloads a ZIP file containing the logs (`ingest_corporate_actions.log`, `ingest_live_news.log`, `ingest_custom_scan.log`) from that day's run.
+> 🎙️ **Interviewer Answer:** *"It manages our PostgreSQL database connections via a persistent connection pool using the `pg` library. It implements a singleton pattern on `globalThis` to prevent connection leaks during Next.js hot-reloads, and exposes a secure, parameterized query wrapper to prevent SQL injection."*

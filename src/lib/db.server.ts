@@ -13,7 +13,7 @@ export function getPool(): pg.Pool {
     globalThis.__singestPool = new pg.Pool({
       connectionString,
       ssl: { rejectUnauthorized: false },
-      max: 3,
+      max: 10,
     });
   }
   return globalThis.__singestPool;
