@@ -27,14 +27,14 @@ import { num, fmtPrice, fmtPct, fmtCr, fmtN, pctCls, mcapBadge, timeAgo } from "
 import type { NewsHeadline } from "@/lib/types";
 
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
+  ReferenceLine,
   LabelList,
 } from "recharts";
 
@@ -245,27 +245,26 @@ export function StockPageClient({ stock, news }: { stock: Row; news: NewsHeadlin
           <div className="glass-card rounded-xl p-5">
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={perf}
-                  layout="vertical"
-                  margin={{ top: 10, right: 40, left: 10, bottom: 10 }}
-                >
-                  <CartesianGrid stroke="var(--border)" horizontal={false} />
+                <LineChart data={perf} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+
                   <XAxis
-                    type="number"
-                    stroke="var(--muted-foreground)"
-                    fontSize={11}
-                    tickFormatter={(v) => `${v}%`}
-                  />
-                  <YAxis
-                    type="category"
                     dataKey="period"
                     stroke="var(--muted-foreground)"
                     fontSize={12}
-                    width={40}
+                    tickLine={false}
                   />
+
+                  <YAxis
+                    stroke="var(--muted-foreground)"
+                    fontSize={11}
+                    tickFormatter={(v) => `${v}%`}
+                    width={45}
+                  />
+
+                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+
                   <Tooltip
-                    cursor={{ fill: "color-mix(in oklab, var(--foreground) 4%, transparent)" }}
                     contentStyle={{
                       background: "var(--card)",
                       border: "1px solid var(--border)",
@@ -276,19 +275,24 @@ export function StockPageClient({ stock, news }: { stock: Row; news: NewsHeadlin
                     labelStyle={{ color: "var(--muted-foreground)" }}
                     formatter={(v: number) => [`${v.toFixed(2)}%`, "Change"]}
                   />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} animationDuration={900}>
-                    {perf.map((p, i) => (
-                      <Cell key={i} fill={p.value >= 0 ? "rgb(52,211,153)" : "rgb(244,63,94)"} />
-                    ))}
+
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    activeDot={{ r: 6 }}
+                    animationDuration={900}
+                  >
                     <LabelList
                       dataKey="value"
-                      position="right"
+                      position="top"
                       fill="var(--foreground)"
                       fontSize={11}
-                      formatter={(v: number) => `${v.toFixed(2)}%`}
+                      formatter={(v: number) => `${v.toFixed(1)}%`}
                     />
-                  </Bar>
-                </BarChart>
+                  </Line>
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
