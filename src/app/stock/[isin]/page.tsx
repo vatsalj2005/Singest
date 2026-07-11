@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { query } from "@/lib/db.server";
 import { StockPageClient } from "./StockPageClient";
@@ -6,7 +7,7 @@ import type { NewsHeadline } from "@/lib/types";
 
 type Row = Record<string, string | number | null>;
 
-async function getStockData(isin: string) {
+const getStockData = cache(async (isin: string) => {
   const rows = await query<Row>(`SELECT * FROM custom_scan WHERE isin = $1 LIMIT 1`, [isin]);
   if (!rows[0]) return null;
 
@@ -20,7 +21,7 @@ async function getStockData(isin: string) {
   );
 
   return { stock: rows[0], news };
-}
+});
 
 export async function generateMetadata({
   params,
