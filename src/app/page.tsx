@@ -136,22 +136,22 @@ export default function Dashboard() {
             <span>Or explore:</span>
             {overviewLoading
               ? Array.from({ length: 8 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-6 w-20 animate-pulse rounded-full bg-white/[0.04]"
-                  style={{ animationDelay: `${i * 60}ms` }}
-                />
-              ))
+                  <div
+                    key={i}
+                    className="h-6 w-20 animate-pulse rounded-full bg-white/[0.04]"
+                    style={{ animationDelay: `${i * 60}ms` }}
+                  />
+                ))
               : overviewData?.popular?.map((p, i) => (
-                <Link
-                  key={p.isin}
-                  href={`/stock/${p.isin}`}
-                  className="stagger rounded-full border border-border bg-white/[0.03] px-3 py-1 text-xs text-foreground transition-all hover:border-primary/60 hover:bg-primary/10 hover:shadow-[0_0_12px_color-mix(in_oklab,var(--primary)_30%,transparent)]"
-                  style={{ animationDelay: `${i * 40}ms` }}
-                >
-                  {p.disp_sym || p.sym}
-                </Link>
-              ))}
+                  <Link
+                    key={p.isin}
+                    href={`/stock/${p.isin}`}
+                    className="stagger rounded-full border border-border bg-white/[0.03] px-3 py-1 text-xs text-foreground transition-all hover:border-primary/60 hover:bg-primary/10 hover:shadow-[0_0_12px_color-mix(in_oklab,var(--primary)_30%,transparent)]"
+                    style={{ animationDelay: `${i * 40}ms` }}
+                  >
+                    {p.disp_sym || p.sym}
+                  </Link>
+                ))}
           </div>
         </section>
 
@@ -185,12 +185,12 @@ export default function Dashboard() {
           <div className="grid gap-3">
             {newsLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-32 animate-pulse rounded-xl bg-white/[0.04]"
-                  style={{ animationDelay: `${i * 100}ms` }}
-                />
-              ))
+                  <div
+                    key={i}
+                    className="h-32 animate-pulse rounded-xl bg-white/[0.04]"
+                    style={{ animationDelay: `${i * 100}ms` }}
+                  />
+                ))
               : newsDataState?.news.map((n) => <NewsCard key={n.article_id} item={n} />)}
             {newsDataState?.news && newsDataState.news.length === 0 && (
               <div className="text-sm text-muted-foreground">No news yet.</div>
@@ -373,8 +373,9 @@ function StockSearch() {
                 <div className="text-right">
                   <div className="text-sm">{fmtPrice(r.ltp)}</div>
                   <div
-                    className={`flex items-center justify-end gap-1 text-xs ${up ? "text-emerald-400" : "text-rose-400"
-                      }`}
+                    className={`flex items-center justify-end gap-1 text-xs ${
+                      up ? "text-emerald-400" : "text-rose-400"
+                    }`}
                   >
                     {up ? (
                       <ArrowUpRight className="h-3 w-3" />
