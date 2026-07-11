@@ -283,3 +283,266 @@ export async function query<T = unknown>(text: string, params: unknown[] = []): 
 * Instead of making every component manually borrow a connection, we provide this neat helper function. Notice the `params` argument. This is critical for preventing **SQL Injection** (hackers typing malicious SQL into a search bar to delete the database). By forcing variables to go through `params` rather than writing them directly into the SQL string, the database driver automatically sanitizes the inputs, making the app bulletproof.
 
 > 🎙️ **Interviewer Answer:** *"It manages our PostgreSQL database connections via a persistent connection pool using the `pg` library. It implements a singleton pattern on `globalThis` to prevent connection leaks during Next.js hot-reloads, and exposes a secure, parameterized query wrapper to prevent SQL injection."*
+
+---
+
+## 🧩 The `src/components/` Folder (UI Puzzle Pieces)
+This folder contains the reusable React components that make up the visual interface of the website.
+
+### 15. `CorporateActions.tsx`
+* **What is it?**
+  This is a massive UI component responsible for displaying the "Corporate Actions" section on a company's page. It handles 6 different tabs (Dividends, Bonus, Splits, Rights, Buybacks, Quarterly Results). It builds the interactive buttons, fetches the data from the backend API, sorts the tables, and even draws a beautiful Bar Chart for the dividend history.
+* **Why do we need it?**
+  A stock's historical data can be massive. If we just dumped hundreds of rows of dividend and stock split data onto the screen at once, it would be overwhelming to read and slow to load. This component organizes that massive dataset into a neat, interactive, tabbed interface.
+
+#### 🔍 Deep Dive: The Most Important Lines
+**Line 1: The Browser Border (`"use client";`)**
+```tsx
+"use client";
+```
+* Next.js tries to build all the HTML on the server by default (which is fast). But servers don't have "mice" to click things. Because this component relies heavily on `onClick` events, state (`useState`), and interactive charts, we put `"use client"` at the top. It explicitly tells Next.js: *"Hey, this component is highly interactive. Send the raw JavaScript to the user's browser and let their laptop run it."*
+
+**Lines 21-70: The Configuration Matrix (`COLS`)**
+```tsx
+const COLS: Record<CorporateActionTabKey, ColDef[]> = { ... }
+```
+* Instead of hard-coding 6 completely different massive HTML `<table>` structures (which would take 1,000+ lines of code), we use this dictionary. It defines the exact columns needed for each tab. The actual HTML table later in the code is just a simple `map()` loop that dynamically builds itself based on whatever tab is active.
+
+**Lines 109-120: The "Eager" Count Fetcher & Backend SQL**
+```tsx
+fetch(`/api/stock/${isin}/corporate-counts`)
+```
+* When the page first loads, we immediately ask the database for the total count of records for each tab. This allows us to put cute number badges next to the tab names (e.g., `Dividends 3`).
+* **The Backend SQL (`src/app/api/stock/[isin]/corporate-counts/route.ts`):**
+```sql
+SELECT COUNT(*)::int AS c FROM corporate_actions_dividends WHERE isin = $1
+```
+
+**Lines 164-168: The "Lazy Loading" Architecture & Backend SQL**
+```tsx
+{CORPORATE_ACTION_TABS.map((t) =>
+  t.key === active && loaded.has(t.key) ? (
+    <TabPanel key={t.key} tab={t.key} isin={isin} />
+  ) : null,
+)}
+```
+* **Performance Optimization:** We do **not** fetch the data for all 6 tabs when the page loads (which would hammer our database with 6 simultaneous queries). We only fetch and render a `TabPanel` the very first time a user explicitly clicks on it.
+* **The Backend SQL (`src/app/api/stock/[isin]/[action]/route.ts`):** When a tab is clicked, this query fires to fetch the timeline:
+```sql
+SELECT row_hash, isin, sym, disp_sym, exch, inst, seg, seosym,
+       ltp, volume, pchange, pperchange, act_type, ann_date, ann_ltp,
+       div_type, ex_date, note, rec_date, rmk, fetched_at
+FROM corporate_actions_dividends -- (dynamically swapped per tab)
+WHERE isin = $1
+ORDER BY ex_date DESC NULLS LAST
+```
+
+**Line 299: The Chart Engine**
+```tsx
+{tab === "dividends" && rows.length >= 3 && <DividendChart rows={sorted} />}
+```
+* If the user is on the Dividends tab, and the company has at least 3 records, it automatically renders a gorgeous, animated bar chart using the `recharts` library at the bottom of the table. 
+* **Why only Dividends?** Dividends provide a concrete numerical value (the announcement price) that investors use to track historical trends. Other actions like Splits are ratios (e.g., 2:1) which cannot be plotted on a standard price Y-axis, and Quarterly Results would require completely different profit metrics.
+
+> 🎙️ **Interviewer Answer:** *"It's a complex, client-side React component that renders the tabbed Corporate Actions interface. It implements lazy-loading for data fetching (only hitting the API when a tab is clicked), dynamic column generation for tables, and utilizes `recharts` for data visualization."*
+
+### 16. `ThemeToggle.tsx`
+* **What is it?**
+  This is the interactive Sun/Moon button that sits in the top-right corner of the website. When you click it, it instantly flips the entire application between Dark Mode and Light Mode.
+* **Why do we need it?**
+  Users have strong preferences for light vs. dark mode. This component not only switches the colors instantly, but it also remembers your choice using the browser's `localStorage` so it persists across page reloads.
+
+#### 🔍 Deep Dive: The Most Important Lines
+**Lines 17-21: The `localStorage` Trap**
+```tsx
+  try {
+    localStorage.setItem("singest-theme", theme);
+  } catch {
+    // Ignore errors caused by restricted localStorage access
+  }
+```
+* **How it's remembered:** When you click the button, we save the string `"light"` or `"dark"` into the browser's permanent memory (`localStorage`). However, the choice is actually *retrieved* inside `src/app/layout.tsx` using a blocking inline `<script>`. That script runs *before* the website paints, reading `localStorage` and forcing the theme immediately to prevent the screen from flashing white (FOUC).
+* **The Safari Bug:** If a user visits using Safari's "Private Browsing", Safari strictly blocks access to `localStorage`. If we didn't wrap the save action inside a `try/catch` block, the entire website would completely crash with a fatal error the moment a private-mode user clicked the button.
+
+**Lines 26-31: The "Hydration" Fix (`mounted`)**
+```tsx
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setTheme(getInitial());
+    setMounted(true);
+  }, []);
+```
+* Next.js renders HTML on the server. The server doesn't know if your laptop is in Light or Dark mode, so it guesses "Dark". If Next.js sends the "Dark" Sun icon to your browser, but your browser's local storage says "Light", React will detect the difference and panic, throwing a massive "Hydration Mismatch" error. By waiting for the component to "mount" (which only happens in the browser) before rendering the icons, we completely sidestep the crash.
+
+**Lines 46-60: The Smooth Animation**
+```tsx
+<Sun
+  className={`h-4 w-4 transition-all duration-300 ${
+    mounted && theme === "dark" ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
+  }`}
+/>
+```
+* Instead of complex JavaScript animations, we use Tailwind CSS. When the theme changes to light, the Sun physically spins (`rotate-90`), shrinks (`scale-0`), and fades away (`opacity-0`) over exactly 300 milliseconds (`duration-300`). At the exact same time, the Moon icon spins in and grows to full size, creating a premium feeling transition.
+
+> 🎙️ **Interviewer Answer:** *"It's a client-side React component that manages the application's light and dark mode states. It safely interacts with `localStorage` (via a try/catch to prevent private-mode crashes) to persist preferences, modifies the root HTML element classes for global CSS changes, and utilizes a mounting technique to prevent hydration mismatches."*
+
+### 17. `PeerComparison.tsx`
+* **What is it?**
+  This is the massive table you see on a stock's page that allows you to compare it against its closest competitors. It pulls in other companies in the same industry and lines up all their financial metrics (like P/E ratio, Market Cap, and Dividend Yield) side-by-side.
+* **Why do we need it?**
+  Looking at a single company's P/E ratio in a vacuum isn't very helpful. A P/E of 30 might be terrible for a steel company, but amazing for a tech company. By building a side-by-side comparison table, users can instantly see if a stock is overvalued or undervalued relative to its specific industry.
+
+#### 🔍 Deep Dive: The Most Important Lines
+**Lines 61-127: The Column Factory**
+```tsx
+const cols: Col[] = [
+  { key: "ltp", header: "CMP (₹)", sortable: true, render: (p) => fmtPrice(p.ltp) },
+  // ... 10 more columns
+];
+```
+* Just like in `CorporateActions.tsx`, we use a configuration array to build the table rather than writing raw HTML. The real magic here is the `render` property. We use the formatting factory (`fmtPrice`, `fmtPct`) we built in `src/lib/format.ts` to instantly transform the ugly database numbers into beautiful, comma-separated strings right inside the column definition.
+
+**Lines 48-59: The Client-Side Sorting Engine & Backend SQL**
+```tsx
+const sorted = useMemo(() => { ... arr.sort(...) });
+```
+* When a user clicks the "P/E" column header to sort the highest P/E ratios to the top, we do **not** send a new request to the database (which would be slow). Instead, we use React's `useMemo` to instantly sort the data directly inside the user's browser. We use our trusted `num()` helper to ensure JavaScript sorts them numerically (1, 2, 10) rather than alphabetically (1, 10, 2).
+* **The Backend SQL (`src/app/api/stock/[isin]/peers/route.ts`):** How does it actually fetch the peers before sorting? It uses a clever 3-step fallback logic:
+  1. **Find Weight Class:** `SELECT mcapclass FROM custom_scan WHERE isin = $1 LIMIT 1`
+  2. **Grab Heavyweights:** 
+  ```sql
+  SELECT isin, sym, disp_sym, ltp, pperchange, mcap, pe, div_yeild, roce, roe, eps, pb, net_profit_margin, volume 
+  FROM custom_scan WHERE mcapclass = $1 ORDER BY mcap DESC NULLS LAST LIMIT 10
+  ```
+  3. **The "Hero" Guarantee:** If the current stock wasn't in that top 10, it manually fetches it to ensure it's in the table: `SELECT ... FROM custom_scan WHERE isin = $1 LIMIT 1`
+
+**Lines 188-198: Highlighting the "Hero"**
+```tsx
+const isCurrent = p.isin === isin;
+return (
+  <tr style={{ background: isCurrent ? "color-mix(in oklab, var(--primary) 12%, transparent)" : undefined }}>
+```
+* When looking at a table of 15 different companies, it's easy to lose track of the one you are actually researching. Inside the loop that builds the table rows, we check: *"Is this row the stock the user is currently researching?"* If yes, we inject custom CSS to give it a bright tinted background and a thick colored left border, making it pop off the screen.
+
+### 📊 Where Do the Numbers Come From?
+Every single numeric value you see in the Peer Comparison table is an **exact, pre-calculated value** pulled directly from the **`custom_scan`** table in the PostgreSQL database. The React frontend does **zero mathematical calculations**. It does not calculate the P/E ratio by dividing price by EPS; it relies 100% on the backend database having those numbers ready to go.
+
+Here is the exact 1-to-1 mapping of the table headings to the `custom_scan` database columns:
+* **Name** → `disp_sym` | **CMP (₹)** → `ltp` | **Change %** → `pperchange` | **Mkt Cap (Cr.)** → `mcap`
+* **P/E** → `pe` | **P/B** → `pb` | **Div Yield %** → `div_yeild` | **ROCE %** → `roce`
+* **ROE %** → `roe` | **NPM %** → `net_profit_margin` | **EPS** → `eps`
+
+> 🎙️ **Interviewer Answer:** *"It's a client-side React component that fetches and renders a sortable data table comparing a specific stock against its industry peers. It utilizes a column configuration array to keep the rendering logic DRY, relies on our central `format.ts` library for data serialization, and dynamically highlights the current stock using conditional CSS."*
+
+---
+
+## 🌐 The Next.js App Router Folder (`src/app/`)
+The `src/app/` directory uses Next.js App Router layout conventions to define the pages, layouts, custom error pages, and API routes of our web application.
+
+### 18. `error.tsx`
+* **What is it?**
+  This is a specialized Next.js error boundary component. In the Next.js App Router, if a client-side or server-side rendering error occurs anywhere within a route segment, Next.js catches the error and automatically swaps out the broken part of the page with this visual fallback screen.
+* **Why do we need it?**
+  Without this file, a runtime JavaScript error in any component would crash the entire website, showing a blank white screen or a browser error. Having a custom `error.tsx` ensures we keep the user interface graceful, log the issue, and give the user options to recover without a full page reload.
+
+#### 🔍 Deep Dive: The Most Important Lines
+**Line 1: The Client Boundary**
+```tsx
+"use client";
+```
+* **Why it must be client-side:** Error boundaries in React *must* be client components because they hook into the browser's runtime rendering lifecycle to intercept exceptions.
+
+**Lines 4-10: The Error Props**
+```tsx
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+```
+* **`error`**: The actual error object that was thrown. It includes a `digest` string which is a unique hash of the error. In production, Next.js obfuscates error messages to prevent leaking sensitive server details, but provides this `digest` so you can look up the full error details in your server logs.
+* **`reset`**: A built-in Next.js function that attempts to re-render the segment that errored. If the issue was a temporary network timeout or a transient rendering glitch, clicking the reset button will recover the page seamlessly.
+
+**Lines 11-13: The Logger**
+```tsx
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+```
+* Whenever an error triggers this boundary, we log it directly to the browser console. In a production app, this is where you would hook up telemetry tools (like Sentry or LogRocket) to report the bug back to the engineering team.
+
+**Lines 25-30: The Reset Button**
+```tsx
+          <button
+            onClick={() => reset()}
+```
+* This triggers the Next.js `reset()` function, trying to reload only the broken route segment. It offers a much smoother user experience than forcing the user to manually refresh their entire browser.
+
+> 🎙️ **Interviewer Answer:** *"It is a client-side React error boundary component that catches runtime exceptions in child route segments. It prevents full-page crashes by rendering a fallback UI, logging the exception, and providing a `reset` callback to attempt state recovery without reloading the entire application."*
+
+### 19. `layout.tsx`
+* **What is it?**
+  This is the Root Layout of our Next.js App Router application. It acts as the outer shell of the website, defining the global HTML document structure (`<html>` and `<body>` tags), global typography settings, meta tags for SEO/social media sharing, viewport controls, and the theme bootstrap script.
+* **Why do we need it?**
+  Without this file, Next.js would not know how to construct the basic HTML page structure. It allows us to apply configurations that must persist across all pages (like the Google Inter font, our global CSS styles, and the dark mode theme loader) so that page transitions feel fast and seamless without redownloading the main layout frame.
+
+#### 🔍 Deep Dive: The Most Important Lines
+**Lines 5-8: Font Optimization (`Inter`)**
+```typescript
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+```
+* **Performance Gain:** This imports the Google **Inter** font using Next.js's built-in font optimization engine. Next.js automatically downloads the font files at build time and bundles them locally. This avoids calling Google's servers at runtime, eliminating layout shifts (CLS) and reducing page-load latency. It assigns the font family to the CSS variable `--font-sans`.
+
+**Lines 10-22: SEO & Social Metadata (Website Identity)**
+```typescript
+export const metadata: Metadata = { ... };
+```
+* **Making it simple:** Think of this as the "identity card" of our website for search engines and social media.
+  * **SEO (Search Engine Optimization):** Sets the text shown on the browser tab (title) and the short summary under the link in Google search results (description).
+  * **OpenGraph & Twitter tags:** When you copy-paste the website link into WhatsApp, Slack, or Twitter/X, these settings are what automatically generate the nice "preview card" (showing a title and description instead of just a raw, boring link).
+  * **Next.js Magic:** Instead of us writing messy, repetitive HTML tags manually, Next.js takes this clean TypeScript object and automatically translates it into the standard `<title>` and `<meta>` tags inside the browser's hidden `<head>` element behind the scenes.
+
+
+**Lines 33-37: The Theme Flickering Fix (Inline Script)**
+```javascript
+(function(){try{var t=localStorage.getItem('singest-theme');var d=document.documentElement;if(t==='light'){d.classList.remove('dark');d.classList.add('light');}else{d.classList.remove('light');d.classList.add('dark');}}catch(e){}})();
+```
+* **Preventing FOUC:** If we waited for React to mount and set the theme (client-side JS execution), a user who selected Light Mode would see the website render in Dark Mode first (its default server state), and then flash to white a split-second later. This visual flicker is called a Flash of Unstyled Content (FOUC).
+* By executing this inline, self-invoking script in the `<head>` *before* the document body begins rendering, the browser checks `localStorage` and adjusts the CSS class on the root HTML element before painting any pixels on screen.
+
+**Line 31: `suppressHydrationWarning`**
+```html
+<html lang="en" className="dark" suppressHydrationWarning>
+```
+* Because the server renders the page with class `"dark"`, but our inline script might change it to `"light"` in the browser before React hydrates, React's hydration engine will detect that the server-rendered class (`"dark"`) does not match the actual DOM class (`"light"`). To prevent React from throwing a hydration mismatch warning in the console, we add `suppressHydrationWarning` to the `<html>` tag.
+
+> 🎙️ **Interviewer Answer:** *"It is the root layout of our Next.js App Router app, responsible for bootstrapping the global HTML/body structures, optimizing typography using Google fonts, and setting global SEO metadata. It also executes a blocking inline script in the head to apply the correct theme from local storage before initial rendering to prevent theme flickering (FOUC), and uses `suppressHydrationWarning` to allow runtime class modifications without React hydration errors."*
+
+### 20. `not-found.tsx`
+* **What is it?**
+  This is our custom 404 (Page Not Found) fallback screen. In Next.js App Router, if a user navigates to a URL path that does not exist (like `/non-existent-page`), or if our code explicitly triggers the `notFound()` function (for example, if a user tries to load details for a stock ticker that doesn't exist in our database), Next.js automatically renders this component.
+* **Why do we need it?**
+  Instead of letting the browser render a generic, unstyled 404 page, a custom `not-found.tsx` keeps the styling, color theme (dark/light mode), typography, and general user experience consistent. It also guides users back to safety by providing an active navigation button to return to the homepage.
+
+#### 🔍 Deep Dive: The Most Important Lines
+**No `"use client"` Boundary (Static Server Component)**
+* Notice that `not-found.tsx` lacks a `"use client"` directive. It is rendered on the server. Because it doesn't need to track local state or register user interaction listeners, Next.js compiles this page down to a static HTML file at build time, resulting in near-instant load speeds.
+
+**Lines 13-18: Client-Side Navigation (`Link`)**
+```tsx
+<Link
+  href="/"
+  className="..."
+>
+  Go home
+</Link>
+```
+* **Performance Benefit:** We use Next.js's native `<Link>` component instead of a standard HTML anchor tag (`<a>`). The native Link component intercepts click events and uses client-side routing to load the homepage. This renders the target page without initiating a full, slow browser refresh, ensuring a smooth, fluid user transition.
+
+> 🎙️ **Interviewer Answer:** *"It is a static fallback component for rendering custom 404 pages. It automatically intercepts unmatched routes or programmatically invoked `notFound()` triggers. Because it does not use client-side state hooks, it compiles to static HTML at build time for optimal loading speed, and leverages Next.js `<Link>` components for seamless client-side page transitions."*
