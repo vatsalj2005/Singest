@@ -4,659 +4,289 @@
   <p>
     Built for speed, power, and clarity. Singest empowers you to track, analyze, and screen stocks across the NSE and BSE with real-time technical indicators, live news, and comprehensive corporate actions.
   </p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/Next.js-15.5-black?style=flat-square&logo=nextdotjs" alt="Next.js" />
+    <img src="https://img.shields.io/badge/React-19.0-blue?style=flat-square&logo=react" alt="React" />
+    <img src="https://img.shields.io/badge/TypeScript-5.8-blue?style=flat-square&logo=typescript" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/Tailwind_CSS-v4.0-38bdf8?style=flat-square&logo=tailwindcss" alt="Tailwind CSS" />
+    <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python" alt="Python" />
+    <img src="https://img.shields.io/badge/CockroachDB-PostgreSQL-244c5a?style=flat-square&logo=cockroachlabs" alt="CockroachDB" />
+  </p>
 </div>
 
 ---
 
 ## 🌟 Introduction
 
-Welcome to **Singest**!
+Finding the right stocks in the Indian stock market can feel like searching for a needle in a haystack. **Singest** solves this by providing a lightning-fast, beautiful, and deeply powerful dashboard to analyze public companies listed on the National Stock Exchange (NSE) and Bombay Stock Exchange (BSE).
 
-Finding the right stocks in the Indian stock market can feel like finding a needle in a haystack. Singest solves this by providing a lightning-fast, beautiful, and deeply powerful dashboard to analyze public companies (like Reliance, TCS, or Infosys).
+### Key Features
 
-Whether you are looking for today's top gainers and losers, trying to filter thousands of stocks based on strict financial metrics (like high ROE and low Debt), or simply want to read the latest live market news—Singest brings everything into one unified, modern interface.
-
-### ✨ What can you do with Singest?
-
-- **🏠 The Dashboard**: Get a birds-eye view of the market. See today's market movers, popular stocks, and breaking news.
-- **🔍 The Screener**: Filter through thousands of stocks instantly. Looking for "Large Cap stocks with a P/E under 15 and Dividend Yield over 3%"? The screener finds them in milliseconds.
-- **📊 Stock Deep-Dives**: Click into any company to see beautiful price charts, gauge technical indicators (like RSI and SMA), compare them side-by-side with industry peers, and track upcoming corporate actions like dividends and stock splits.
+- **🏠 The Dashboard:** A bird's-eye view of the market showing today's market movers (top gainers/losers), popular tickers, and a live news feed driven by sentiment analysis.
+- **🔍 The Screener:** An advanced multi-metric filter that parses thousands of stocks in milliseconds based on custom P/E ranges, ROCE, ROE, Dividend Yields, and market capitalization classes.
+- **📊 Stock Deep-Dives:** Comprehensive profile pages showing dynamic pricing metrics, 5-year performance charts, technical moving averages, real-time custom SVG RSI gauges, peer comparison tables, and historical corporate action tables.
+- **⚙️ Python Ingestion Backend:** A robust, resume-capable background data pipeline that fetches, cleans, deduplicates, and upserts corporate events, news, and scanner metrics directly from the Dhan API.
 
 ---
 
-## 📂 The Main Project Folder (Root Directory)
+## 🏗️ System Architecture
 
-The root folder of the project acts as the control center. It doesn't contain the actual visual website code (that's inside `src/`), but rather it holds **configuration files**. These files tell the various tools we use (like Next.js, TypeScript, Tailwind, and Git) how to behave.
+Singest splits concerns between an interactive **Next.js Web Frontend** (App Router) and an isolated **Python Ingestion Backend**, connected by a shared **CockroachDB** instance.
 
-Here is a detailed breakdown of every single file in the main folder:
+```mermaid
+graph TD
+    subgraph Web App (Next.js 15 + React 19)
+        UI[User UI: Dashboard / Screener / Stock Profile] -->|Client Components| CC[React Client: State, Interactivity, Charts]
+        UI -->|Server Components| SC[Next.js Server Pages: SEO & Pre-fetching]
+        CC -->|Fetch| API[Next.js API Routes]
+        API -->|Pool Query| DB[(CockroachDB)]
+        SC -->|Pool Cache Query| DB
+    end
 
-### 1. `package.json` and `package-lock.json`
+    subgraph Background Data Pipeline (Python)
+        Orch[main.py Orchestrator] -->|Runs Subprocesses| Scripts[scripts/*.py Ingestion Modules]
+        Scripts -->|API Requests| Dhan[External Dhan Analytics API]
+        Scripts -->|Upsert & Resume Metadata| DB
+    end
+```
 
-- **What are they?**
-  Think of `package.json` as the recipe for the project. It lists the project's name, the scripts we can run (like `npm run dev`), and all the external libraries the project needs to work (like React, Next.js, and Tailwind CSS). `package-lock.json` is a highly detailed, automatically generated receipt that locks in the exact version numbers of every library (and their sub-libraries) so that the project runs exactly the same on every computer.
-- **Why do we need them?**
-  Without them, Node.js wouldn't know what packages to download when you type `npm install`, and it wouldn't know how to start the website.
-- **What if we delete them?**
-  Deleting `package.json` breaks the project entirely because you lose the instructions on how to build it. Deleting `package-lock.json` is less fatal but risky, as reinstalling packages might pull in newer, untested versions of libraries that could break the code.
+---
 
-> 🎙️ **Interviewer Answer:** _"They manage the project's dependencies and scripts. `package.json` lists the required libraries, while `package-lock.json` locks their exact versions to ensure consistent builds across all environments."_
+## 📂 Codebase File Directory Breakdown
+
+Below is a detailed guide to every core file in the project, explaining their purpose, why they are needed, and key interviewer talking points.
+
+<details>
+<summary><b>1. Project Configuration & Controls (Root Folder)</b></summary>
+
+### 1. `package.json`
+
+- **What is it?** The recipe book for the Node.js project. It lists dependencies, devDependencies, and run scripts (e.g. `npm run dev`, `npm run build`).
+- **Why do we need it?** Without it, Node.js wouldn't know which packages to install or how to trigger dev servers.
+- **Interviewer talking point:** _"It manages project dependencies and scripts, ensuring standard environment setups across dev machines."_
 
 ### 2. `next.config.ts`
 
-- **What is it?**
-  The master configuration file for the Next.js framework (the engine that powers our website).
-- **Why do we need it?**
-  It allows us to change how Next.js behaves—for example, setting up custom redirects, tweaking the build process, or adding security headers. Right now, ours is mostly empty, meaning we are happily using the Next.js default settings.
-- **What if we delete it?**
-  Next.js will recreate a default one or just use its built-in defaults. However, it's standard practice to keep it around in case we need to add rules later.
+- **What is it?** The master configuration file for the Next.js framework.
+- **Why do we need it?** It allows tweaking framework compilation, setting redirects, headers, and bundling optimizations.
+- **Interviewer talking point:** _"It configures the Next.js compiler, allowing us to hook into routing rules and optimize asset compilation."_
 
-> 🎙️ **Interviewer Answer:** _"It's the primary configuration file for Next.js, used to customize routing, build processes, and framework-level settings."_
+### 3. `tsconfig.json` & Typings
 
-### 3. `tsconfig.json`, `next-env.d.ts`, and `tsconfig.tsbuildinfo`
+- **What are they?** Controls TypeScript compiler rules, module resolutions, and strictness levels.
+- **Why do we need them?** They enforce type safety during development, preventing runtime type crashes (e.g., trying to run arithmetic on strings).
+- **Interviewer talking point:** _"They configure the TypeScript compiler, caching previous builds for faster compilation and enforcing strict static type checks."_
 
-- **What are they?**
-  These files control **TypeScript**. TypeScript is a tool that acts like a spell-checker for our code, making sure we don't accidentally pass a word (string) into a math calculation (number).
-  - `tsconfig.json`: The rules file (e.g., how strict the spell-checker should be).
-  - `next-env.d.ts`: A helper file generated by Next.js that teaches TypeScript about Next.js specific features.
-  - `tsconfig.tsbuildinfo`: A temporary cache file that makes the spell-checker run much faster on subsequent runs by remembering what it already checked.
-- **Why do we need them?**
-  They ensure our code is robust and free of silly typos before we ever run it in the browser.
-- **What if we delete them?**
-  Deleting `tsconfig.json` will cause TypeScript to stop working, meaning you'll lose all error checking and autocomplete features in your code editor. Deleting the other two is harmless; they will just be regenerated automatically.
+### 4. `eslint.config.js` & `.prettierrc`
 
-> 🎙️ **Interviewer Answer:** _"They configure the TypeScript compiler. `tsconfig.json` enforces type-checking rules, `next-env.d.ts` provides Next.js specific types, and `tsbuildinfo` caches previous builds for faster compilation."_
-
-### 4. `eslint.config.js` and `.prettierrc`
-
-- **What are they?**
-  These are the "code police" and "code beautifier" files.
-  - `eslint.config.js`: Tells ESLint how to scan our code for bad practices or bugs (like defining a variable but never using it).
-  - `.prettierrc`: Tells Prettier how to format our code (like how many spaces to use for indentation, or whether to use single or double quotes).
-- **Why do we need them?**
-  They keep the codebase looking clean, uniform, and professional, no matter how many different people work on it.
-- **What if we delete them?**
-  The code will still run perfectly fine, but over time, the code will become messy, disorganized, and harder to read.
-
-> 🎙️ **Interviewer Answer:** _"They enforce code quality and styling. ESLint catches programmatic errors and bad practices, while Prettier enforces consistent code formatting across the team."_
+- **What are they?** Code quality linter and code formatting configuration files.
+- **Why do we need them?** ESLint catches bugs (like unused variables or imports) while Prettier enforces consistent spacing, layout, and style.
+- **Interviewer talking point:** _"They enforce standard coding patterns and style conventions across the development team."_
 
 ### 5. `postcss.config.mjs`
 
-- **What is it?**
-  A configuration file for PostCSS, which is a tool that transforms our CSS styles.
-- **Why do we need it?**
-  We use Tailwind CSS to style our website. Tailwind uses PostCSS to process its special utility classes and convert them into standard, browser-readable CSS. This file simply tells the system: "Hey, make sure you use Tailwind CSS when processing styles."
-- **What if we delete it?**
-  Tailwind CSS will completely break, and the entire website will lose its colors, spacing, and design, looking like a plain text document from 1995.
+- **What is it?** Integrates PostCSS plugins, specifically Tailwind CSS v4.
+- **Why do we need it?** It compiles Tailwind utility classes into standardized browser-readable CSS files.
+- **Interviewer talking point:** _"It connects PostCSS with Tailwind v4, translating modern utility classes into standard CSS."_
 
-> 🎙️ **Interviewer Answer:** _"It configures PostCSS plugins. In this project, it specifically integrates Tailwind CSS, instructing the build tool to compile Tailwind's utility classes into standard CSS."_
+### 6. `.env` & `.env.example`
 
-### 6. `.env` and `.env.example`
-
-- **What are they?**
-  - `.env`: A hidden file that contains sensitive secrets, like passwords and the `DATABASE_URL` used to connect to our CockroachDB/PostgreSQL database.
-  - `.env.example`: A safe, empty template showing what the `.env` file _should_ look like, without giving away the actual passwords.
-- **How are the database connections actually made using this file?**
-  When the website starts, it doesn't just magically know where the database is. Here is the exact step-by-step wiring:
-  1. The `.env` file contains a connection string that looks like this: `DATABASE_URL="postgresql://username:password@hostname:port/database_name"`.
-  2. **In the Next.js Website**: Inside the file `src/lib/db.server.ts`, the code reads `process.env.DATABASE_URL`. It takes that string and feeds it into the `pg` (node-postgres) library to create a **"Connection Pool"**.
-     - **What is a Connection Pool?** Imagine calling a busy restaurant. If they only have one telephone line (one connection), only one customer can order at a time. Everyone else gets a busy signal and has to wait. If 1,000 users visit our website at exactly the same time, opening 1,000 separate connections to the database would overwhelm and crash it.
-     - A Connection Pool is like the restaurant hiring a receptionist with 20 telephone lines. The pool opens a small, manageable number of permanent connections (e.g., 20 "open pipes") to the database. When a user requests data, they "borrow" an open pipe, fetch the data in milliseconds, and instantly return the pipe to the pool for the next user.
-     - **How do 20 pipes serve 1,000 people?** The secret is extreme speed. A database query (like getting Reliance's stock price) often takes less than 5 milliseconds to finish. Because it's so fast, a single "pipe" can be borrowed, used, and returned 200 times in a single second! If you have 20 pipes, they can easily process 4,000 requests per second. If 1,000 people click a button at the _exact_ same millisecond, 20 of them get served instantly, and the other 980 are placed in an invisible micro-queue. Because the turnaround time is 5ms, the entire queue of 1,000 people is completely cleared in just a quarter of a second (250ms). To the human eye, it feels instantaneous for everyone.
-     - **How do we scale to 10,000 users?** If traffic explodes to 10,000 users clicking at the exact same time, a 20-pipe pool would cause the queue to take 2-3 seconds to clear, making the website feel laggy. To handle 10,000 users seamlessly, you would do the following:
-       1. **Increase the Pool Size**: Change the configuration from 20 pipes to 100 pipes.
-       2. **Upgrade the Database**: Pay for a more powerful database server (more CPU/RAM) that can handle keeping 100 pipes open without breaking a sweat.
-       3. **Add Caching (Redis)**: Instead of hitting the database for common requests (like the top 10 gainers), you store that result in ultra-fast memory. Now, 9,000 out of 10,000 users just read the memory, and only 1,000 actually need to use the database pipes.
-       4. **Add a Connection Manager (PgBouncer)**: An external piece of software designed solely to expertly juggle tens of thousands of queued connections to the database efficiently.
-  3. **In the Python Backend**: Inside the Python ingestion scripts (like in `Backend/scripts/`), a library called `python-dotenv` scans the folder, finds the `.env` file, and loads it into memory. The script then calls `os.getenv("DATABASE_URL")` and passes that string to the `psycopg2` library to establish a secure link to the database, allowing it to insert fresh stock data.
-- **Why do we need them?**
-  To keep our database passwords secure. We use `.env` locally to run the site, but we NEVER upload `.env` to GitHub so hackers can't steal our data. We upload `.env.example` instead, so other developers know what variables they need to fill in.
-- **What if we delete them?**
-  Deleting `.env` will cause the website (and the Python backend) to instantly crash because they won't know how to connect to the database anymore.
-
-> 🎙️ **Interviewer Answer:** _"They handle environment-specific secrets. `.env` securely stores local credentials like the database URL, while `.env.example` serves as a safe, secret-free template for other developers."_
+- **What are they?** Variables defining credentials like `DATABASE_URL` (database string).
+- **Why do we need them?** Kept local to prevent committing sensitive passwords to GitHub, with `.example` serving as a mock template.
+- **Interviewer talking point:** _"They segregate configuration variables and secrets from code, keeping database passwords safe."_
 
 ### 7. `.gitignore`
 
-- **What is it?**
-  A list of files and folders that Git (our version control system) should completely ignore and NEVER upload to the internet (GitHub).
-- **Why do we need it?**
-  It prevents us from accidentally uploading massive folders (like `node_modules`), temporary files (like `.next/`), or sensitive secrets (like `.env`). We also added `code_walkthroughs/` to this file so these notes stay local to your machine.
-- **What if we delete it?**
-  You would accidentally upload gigabytes of junk files and highly sensitive database passwords to GitHub, causing a massive security risk and slowing everything down.
+- **What is it?** A list of files/folders Git should ignore.
+- **Why do we need it?** Prevents committing bulky folders like `node_modules` or local credentials like `.env`.
+- **Interviewer talking point:** _"It shields the remote repository from code junk and private credential leaks."_
+</details>
 
-> 🎙️ **Interviewer Answer:** _"It tells Git which files and directories to ignore, preventing us from accidentally committing massive directories like `node_modules` or sensitive files like `.env` to source control."_
+<details>
+<summary><b>2. Global Styling & Typings (`src/`)</b></summary>
 
-### 8. `README.md`
+### 8. `custom.d.ts`
 
-- **What is it?**
-  The front page of our project. It's a Markdown document that explains what Singest is, how the architecture works, and how to run the project.
-- **Why do we need it?**
-  If a new developer joins the project (or if you come back to it after 6 months), the README is the instruction manual that brings them up to speed.
-- **What if we delete it?**
-  The code will still run perfectly, but anyone looking at the project will have no idea what it is or how to start it.
+- **What is it?** A tiny ambient module declaration file containing `declare module "*.css";`.
+- **Why do we need it?** Prevents TypeScript from raising warnings when importing CSS files inside React modules.
+- **Interviewer talking point:** _"It teaches the TypeScript compiler how to handle CSS imports as valid module references."_
 
-> 🎙️ **Interviewer Answer:** _"It is the primary documentation for the repository, serving as the entry point for new developers to understand the project architecture and local setup instructions."_
+### 9. `styles.css`
+
+- **What is it?** The master styling sheet for the website.
+- **Why do we need it?** Initializes Tailwind v4, defines the OKLCH theme palettes for dark/light modes, and custom styles like glassmorphism.
+- **Interviewer talking point:** _"It builds the design system, declaring OKLCH variables and custom animations to give the UI a premium look."_
+</details>
+
+<details>
+<summary><b>3. Shared Utilities & Drivers (`src/lib/`)</b></summary>
+
+### 10. `corporate-tables.ts`
+
+- **What is it?** A TypeScript map dictionary translating UI tab names (e.g. `"dividends"`) to their exact database table names.
+- **Why do we need it?** Keeps table mappings DRY (Don't Repeat Yourself). Renaming a table in this file updates both routing APIs and count lookups.
+- **Interviewer talking point:** _"It provides a type-safe mapping dictionary matching frontend keys with PostgreSQL tables."_
+
+### 11. `types.ts`
+
+- **What is it?** Houses TypeScript definitions (like `StockSummary` and `ScreenerRow`).
+- **Why do we need it?** Guarantees data shapes between database API routes and React components remain synced.
+- **Interviewer talking point:** _"It enforces the canonical shape of our data payloads, preventing runtime reference exceptions."_
+
+### 12. `format.ts`
+
+- **What is it?** The formatting helper module.
+- **Why do we need it?** Serializes raw database values into clean text (e.g., using `toLocaleString("en-IN")` for Indian rupee comma formatting).
+- **Interviewer talking point:** _"It implements locale-aware formatting, ensuring visual consistency across all pages."_
+
+### 13. `db.server.ts`
+
+- **What is it?** The server-side database connection runner.
+- **Why do we need it?** Establishes a connection pool (`max: 10`) and implements a global singleton pattern to prevent HMR (Hot Module Replacement) from leaking TCP connections during local development.
+- **Interviewer talking point:** _"It handles PostgreSQL pooling via a singleton pattern, exposing secure parameterized query wrappers to prevent SQL injection."_
+</details>
+
+<details>
+<summary><b>4. Shared Components (`src/components/`)</b></summary>
+
+### 14. `CorporateActions.tsx`
+
+- **What is it?** Handles the corporate actions section on stock profile pages.
+- **Why do we need it?** Lazily fetches splits, bonuses, dividends, and earnings tables only when a user selects their tab, reducing database load.
+- **Interviewer talking point:** _"It is a client-side component using lazy loading and `recharts` to render corporate events dynamically."_
+
+### 15. `ThemeToggle.tsx`
+
+- **What is it?** The Sun/Moon toggle button.
+- **Why do we need it?** Flipped state triggers dark/light classes on the HTML node, storing selections in `localStorage` safely inside a `try/catch` to avoid private-mode crashes.
+- **Interviewer talking point:** _"It manages dark mode toggles with hydration-safe mounting to prevent console mismatch warnings."_
+
+### 16. `PeerComparison.tsx`
+
+- **What is it?** A comparison grid matching a stock against 10 similar capitalization size companies.
+- **Why do we need it?** Helps investors analyze valuations (P/E, ROCE) relative to industry peers.
+- **Interviewer talking point:** _"It runs client-side sorting algorithms on pre-calculated database parameters, highlighting the researched company dynamically."_
+</details>
+
+<details>
+<summary><b>5. Route Views & Layouts (`src/app/`)</b></summary>
+
+### 17. `error.tsx`
+
+- **What is it?** React client-side error boundary fallback screen.
+- **Why do we need it?** Intercepts client-side exceptions, preventing full-page white-screen crashes and exposing a `reset()` button.
+- **Interviewer talking point:** _"It isolates runtime client-side exceptions, allowing route segments to try recovery without page reloads."_
+
+### 18. `layout.tsx`
+
+- **What is it?** The root layout shell.
+- **Why do we need it?** Bootstraps `<html>`, Google Inter font optimizations, and embeds a blocking `<script>` in the head to apply theme settings before rendering, eliminating theme flash (FOUC).
+- **Interviewer talking point:** _"It bootstraps root HTML structures and applies inline script checks to prevent light/dark theme flash on initial load."_
+
+### 19. `not-found.tsx`
+
+- **What is it?** Custom 404 handler.
+- **Why do we need it?** Replaces browser default 404 screens with styled lookups when dynamic routes fail.
+- **Interviewer talking point:** _"It is a static server-side component compiling at build time to serve fast 404 routes."_
+
+### 20. `page.tsx` (Dashboard / Home)
+
+- **What is it?** The main home dashboard.
+- **Why do we need it?** Handles background polling (30s overview stats, 60s news feed) with active-flag cleanup patterns, and features a 200ms debounced search bar.
+- **Interviewer talking point:** _"It implements memory-safe background polling loops and debounced search triggers to optimize database overhead."_
+
+### 21. `screener/page.tsx` (Stock Screener)
+
+- **What is it?** The interactive stock filtering page.
+- **Why do we need it?** Implements a **Dual-State Filter Pattern** (draft vs. applied state) so database requests only execute when users click search, preventing keypress request storms.
+- **Interviewer talking point:** _"It couples draft-applied filter bounds with whitelisted server sorting parameters to prevent SQL injection."_
+
+### 22. `stock/[isin]/page.tsx` (Dynamic Stock Orchestrator)
+
+- **What is it?** The server-side page wrapper that pre-fetches stock details and news headlines.
+- **Why do we need it?** Pre-fetches values server-side for search engine indexation (SEO), and wraps lookups inside React's `cache` request memoization to prevent duplicate database calls between metadata and page layout passes.
+- **Interviewer talking point:** _"It uses React cache memoization to deduplicate raw SQL queries between metadata and rendering passes."_
+
+### 23. `stock/[isin]/StockPageClient.tsx` (Stock Detail Client View)
+
+- **What is it?** Draws the visual metrics grids, charts, and indicators for a single stock.
+- **Why do we need it?** Renders price performance charts, indicator stats (SMA, Bollinger), and maps coordinates to a custom SVG semicircular gauge for RSI.
+- **Interviewer talking point:** _"It renders dynamic layouts, price metrics, and hand-crafted trigonometric SVG gauges to prevent layout shift."_
+</details>
 
 ---
 
-## 🎨 The `src/` Folder (Frontend Brain)
+## 💾 Database Schema
 
-The `src/` folder is where the actual website lives. It contains all the visual components, UI designs, and client-side logic.
+The database connection supports the following schemas, initialized on first run of the ingestion scripts:
 
-### 9. `custom.d.ts`
-
-- **What is it?**
-  This is a tiny, two-line TypeScript configuration file containing: `declare module "*.css";`.
-- **Why do we need it?**
-  By default, TypeScript only understands `.js`, `.ts`, `.tsx`, and `.json` files. If you try to write `import "./styles.css";` inside a React component, the strict TypeScript "spell-checker" will throw a massive red error saying it doesn't know what a `.css` file is. This file acts as a translator. It explicitly tells TypeScript: _"Hey, if you see any file ending in `.css` being imported, don't panic. Just accept it."_
-- **What if we delete it?**
-  Your code will technically still run perfectly fine in the browser because the actual bundler knows how to handle CSS. However, your code editor (like VS Code) and the TypeScript compiler will immediately light up with annoying red squiggly error lines everywhere you import a CSS file.
-
-> 🎙️ **Interviewer Answer:** _"It's a TypeScript declaration file that explicitly teaches the TypeScript compiler how to handle `.css` file imports, preventing compilation errors when importing styles directly into components."_
-
-### 10. `styles.css`
-
-- **What is it?**
-  This is the master design file for the entire website. It doesn't just hold random colors; it is a highly structured **Design System**.
-  1. **Tailwind Initialization:** It boots up the Tailwind CSS engine (using the modern v4 syntax).
-  2. **The Color Palette:** It defines every single color used in the app in `oklch` (a modern, mathematically precise color space for ultra-vibrant colors) for both light and dark modes.
-  3. **Glassmorphism:** It creates custom, reusable CSS classes for the "frosted glass" effect you see on cards and popups across the dashboard.
-  4. **Micro-Animations:** It defines smooth animations like `page-transition` so data elegantly glides into place.
-- **Why do we need it?**
-  Without this file, the website would be a plain, white, unformatted HTML document. Furthermore, by defining our colors as variables here (like `--primary`), if we ever want to rebrand the entire website, we only have to change _one single line_ in this file, and the entire app instantly updates.
-- **🛠️ Why was VS Code throwing red error lines here?**
-  Tailwind CSS v4 is so cutting-edge that it invented brand new CSS commands (like `@theme`, `@utility`, and `@source`) that don't exist in the official CSS rulebook yet. VS Code's default CSS spell-checker panics when it sees them. We fixed this by creating `.vscode/settings.json` with `"css.validate": false` to turn off the outdated spell-checker.
-- **What if we delete it?**
-  The entire Next.js application will lose all styling, colors, animations, and Tailwind functionality.
-
-> 🎙️ **Interviewer Answer:** _"It's our global stylesheet powering the entire application's design system. It initializes Tailwind CSS v4, establishes our core `oklch` color palettes for light and dark modes, and defines custom animations and glassmorphism utilities for a premium UX."_
+| Table Name                            | Primary Key   | Purpose                                                                                     |
+| :------------------------------------ | :------------ | :------------------------------------------------------------------------------------------ |
+| `custom_scan`                         | `isin`        | Houses all metrics, valuation ratios, prices, and indicator values for all stocks.          |
+| `live_news`                           | `article_id`  | Stores incoming stock market news articles alongside their categories and sentiment labels. |
+| `corporate_actions_dividends`         | `row_hash`    | Cash/Stock dividend announcements.                                                          |
+| `corporate_actions_quarterly_results` | `row_hash`    | Quarterly earnings reports.                                                                 |
+| `corporate_actions_bonus`             | `row_hash`    | Bonus share issue details.                                                                  |
+| `corporate_actions_splits`            | `row_hash`    | Stock splitting ratio details.                                                              |
+| `corporate_actions_rights`            | `row_hash`    | Rights issue parameters.                                                                    |
+| `corporate_actions_buybacks`          | `row_hash`    | Share buyback details.                                                                      |
+| `ingestion_metadata`                  | `script_name` | Stores execution dates (`last_run_date`) to support incremental runs.                       |
 
 ---
 
-## 🛠️ The `src/lib/` Folder (Backend Logic & Utils)
+## 🐍 Ingestion Pipeline Backend (`Backend/`)
 
-This folder contains the brain of our backend data fetching, database connection management, and utility functions that power the frontend.
+The Python backend feeds the web database with fresh statistics, running independently via a master controller:
 
-### 11. `corporate-tables.ts`
+### Ingestion Modules (`Backend/scripts/`)
 
-- **What is it?**
-  This file acts as a simple "translator" between the frontend website and the backend database. It holds a dictionary that translates the friendly frontend tab name (like `"dividends"`) into the exact database table name (like `"corporate_actions_dividends"`).
-- **Why do we need it?**
-  By keeping this mapping centralized, we ensure that both our data-fetching API routes and our component counters are looking at the exact same tables. If we ever rename a database table, we only have to change it in this one file, and the entire app adapts automatically.
+- **`ingest_corporate_actions.py`:** Incremental fetcher retrieving corporate adjustments from `last_run_date - 1 day` up to `today + 90 days`. Hashing details (`["isin", "ann_date", "ann_ltp", "ex_date"]`) generates a unique `row_hash` to eliminate duplicate database entries.
+- **`ingest_live_news.py`:** Inserts new headlines. Compares incoming articles against existing keys, executing inserts only on missing records.
+- **`ingest_custom_scan.py`:** Connects to Dhan's analytics API, sanitizes numeric values, and runs database `UPSERT` queries to overwrite all active tickers with their latest market parameters.
 
-#### 🔍 Deep Dive: The Most Important Lines
+### Orchestration (`Backend/main.py`)
 
-**Line 7: The TypeScript Guarantee**
-
-```typescript
-export const CORPORATE_ACTION_TABLES: Record<CorporateActionTabKey, string> = {
-```
-
-- **`Record<CorporateActionTabKey, string>`**: This is where TypeScript flexes its muscles. It strictly enforces that every single key in this dictionary MUST perfectly match one of the predefined `CorporateActionTabKey` names. If a junior developer accidentally types `dividendss: "..."`, the code editor will instantly throw a massive red error before they even save the file. It's an unbreakable guardrail ensuring the frontend tabs always perfectly align with our backend tables.
-
-**Lines 8-13: The Translation Matrix**
-
-```typescript
-  dividends: "corporate_actions_dividends",
-```
-
-- The Left Side (`dividends`) matches exactly what the user sees in the website's URL. The Right Side (`"corporate_actions_dividends"`) is what the Next.js API grabs to tell the database: `SELECT * FROM corporate_actions_dividends`.
-
-> 🎙️ **Interviewer Answer:** _"It's a configuration dictionary that securely maps frontend UI tab keys (like 'dividends') to their corresponding PostgreSQL database table names. It uses TypeScript's `Record` utility to guarantee type safety across our API routes."_
-
-### 12. `types.ts`
-
-- **What is it?**
-  If `package.json` is the recipe for the project, `types.ts` is the architectural blueprint for our data. Because we use TypeScript, we can't just pass random, undefined data around our app. This file contains the master definitions that tell the computer _exactly_ what a "Stock" or a "News Article" looks like.
-- **Why do we need it?**
-  Imagine the backend developer renames the stock price from `ltp` (Last Traded Price) to `currentPrice`. Without this file, the website would crash at runtime. By defining a central `StockSummary` type here, if the backend changes a name, TypeScript instantly throws a red error in the frontend code, preventing the bug from ever reaching the users.
-
-#### 🔍 Deep Dive: The Most Important Lines
-
-**Lines 13-20: The Lightweight Blueprint**
-
-```typescript
-export type StockSummary = {
-  isin: string;
-  sym: string;
-  disp_sym: string;
-  ltp: number | null;
-  pperchange: number | null;
-  mcapclass: string | null;
-};
-```
-
-- This defines the absolute minimum amount of information we need to show a basic stock card. We use this lightweight blueprint for search results and the "Top Gainers" list to ensure we only pull 6 pieces of data from the database, keeping the app lightning-fast rather than downloading 50 heavy financial columns when we don't need them.
-
-**Lines 22-34: The "DRY" Extension**
-
-```typescript
-export type ScreenerRow = StockSummary & { ... }
-```
-
-- **The `&` Symbol:** This is a TypeScript "Intersection". Instead of manually copy-pasting the symbol and price from `StockSummary` into the `ScreenerRow`, we simply say: _"A ScreenerRow is everything a StockSummary is, **PLUS** all these extra financial columns."_ It keeps the code "DRY" (Don't Repeat Yourself).
-
-**Lines 71-80: TypeScript "Black Magic"**
-
-```typescript
-export const CORPORATE_ACTION_TABS = [ ... ] as const;
-export type CorporateActionTabKey = (typeof CORPORATE_ACTION_TABS)[number]["key"];
-```
-
-- **`as const`**: Locks the Javascript array in place, making it "read-only".
-- **The Black Magic (`[number]["key"]`)**: Instead of manually typing a list of allowed words (like `type TabKey = "dividends" | "bonus"`), this line automatically rips the exact string values directly out of the `CORPORATE_ACTION_TABS` array and magically transforms them into a strict type. It guarantees our types are never out of sync with our actual UI arrays!
-
-> 🎙️ **Interviewer Answer:** _"It's the central TypeScript definition file that dictates the canonical 'shape' of all data flowing between our API and the UI components. By keeping all types centralized, we prevent code drift and ensure type-safety across the entire stack."_
-
-### 13. `format.ts`
-
-- **What is it?**
-  This file is the "Beautification Engine" of the application. When data comes out of the database, it is often raw and ugly (for example, a stock price might be `"123456.789123"`). This file contains tiny factory functions that take ugly data in, and spit beautiful, human-readable text out (like `"₹1,23,456.78"` or `"+5.4%"`).
-- **Why do we need it?**
-  By centralizing all formatting here, we guarantee absolute consistency. The stock price on the Dashboard will look exactly the same as the Screener. If we want to show 3 decimal places instead of 2 for all percentages, we only have to change one number in this file.
-
-#### 🔍 Deep Dive: The Most Important Lines
-
-**Line 14: The Foundation (`num`)**
-
-```typescript
-export const num = (v: unknown): number | null => { ... }
-```
-
-- Databases sometimes send large numbers over the network as strings. This function safely catches anything (`unknown`), checks if it's a valid number, and forces it into a strict JavaScript Number (or returns `null`). Every other function uses this first to ensure they don't crash.
-
-**Line 25: The Indian Locale Engine (`fmtPrice`)**
-
-```typescript
-return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-```
-
-- The Indian numbering system places commas differently (Lakhs/Crores: `1,00,000`) than the West (`100,000`). Instead of writing complex math, we use JavaScript's built-in `toLocaleString("en-IN")` engine which handles the Indian comma logic perfectly and instantly.
-
-**Line 73: The "Green or Red" Painter (`pctCls`)**
-
-```typescript
-if (n > 0) return "text-emerald-400";
-if (n < 0) return "text-rose-400";
-```
-
-- This single, tiny function is responsible for coloring the entire website. If a stock goes up, it returns a Tailwind class for bright Emerald green. If it drops, Rose red.
-
-**Line 82: The Badge Generator (`mcapBadge`)**
-
-```typescript
-if (k.includes("large")) return "bg-blue-500/15 text-blue-300 border-blue-500/30";
-```
-
-- It takes a boring string like "Large Cap" and spits out three distinct Tailwind classes: a translucent blue background, blue text, and a blue border. It highlights how logic and design are heavily mixed together in utility files to create beautiful UI dynamically.
-
-> 🎙️ **Interviewer Answer:** _"It's our centralized utility library for data serialization and UI formatting. It safely coerces raw database values into strict types and applies locale-aware transformations (like Indian Rupee comma grouping) to ensure visual consistency across all components."_
-
-### 14. `db.server.ts`
-
-- **What is it?**
-  This is the bridge between our Next.js web application and the PostgreSQL database. Whenever the website needs to fetch a stock price or read a news article, it sends that request through this exact file.
-- **Why do we need it?**
-  Connecting to a database is expensive and slow. If every single user who visited the website created a brand new, unique connection, the database would quickly run out of memory and crash. This file solves that by establishing a **Connection Pool** (a small, strict number of permanent connections that users have to "borrow" and "return").
-
-#### 🔍 Deep Dive: The Most Important Lines
-
-**Lines 8-19: The "Singleton" Hot-Reload Trick**
-
-```typescript
-if (!globalThis.__singestPool) {
-  globalThis.__singestPool = new pg.Pool({ ... });
-}
-```
-
-- When coding locally, Next.js constantly restarts the backend every time you save a file (Hot Reloading). If we just wrote `new pg.Pool()`, Next.js would open a brand new pool of connections every time you hit Save, creating hundreds of "zombie" connections that would instantly crash your database. By attaching the pool to `globalThis` (the absolute highest level of the computer's memory), it acts as a permanent anchor. It says: _"Does a pool already exist in deep memory? If yes, just reuse it."_
-
-**Line 16: The Bottleneck (`max: 10`)**
-
-```typescript
-max: 10,
-```
-
-- **How Connections Work:** This is the most important configuration in the app. Imagine a restaurant with only 10 telephone lines. This tells the database: _"Never allow more than exactly 10 active queries to run at the exact same millisecond."_ If 100 people visit the website at the exact same moment, the pool doesn't crash. It lets the first 10 people use the 10 pipes. Because a database query takes just 5 milliseconds, those 10 pipes are instantly returned to the pool and given to the next 10 people. We keep it at `10` because we are running on a free, low-power database tier. It acts as an absolute shield against traffic spikes.
-
-**Lines 22-26: The Secure Query Wrapper**
-
-```typescript
-export async function query<T = unknown>(text: string, params: unknown[] = []): Promise<T[]> { ... }
-```
-
-- Instead of making every component manually borrow a connection, we provide this neat helper function. Notice the `params` argument. This is critical for preventing **SQL Injection** (hackers typing malicious SQL into a search bar to delete the database). By forcing variables to go through `params` rather than writing them directly into the SQL string, the database driver automatically sanitizes the inputs, making the app bulletproof.
-
-> 🎙️ **Interviewer Answer:** _"It manages our PostgreSQL database connections via a persistent connection pool using the `pg` library. It implements a singleton pattern on `globalThis` to prevent connection leaks during Next.js hot-reloads, and exposes a secure, parameterized query wrapper to prevent SQL injection."_
+- Coordinates the sequence: `Corporate Actions ➔ Live News ➔ Custom Scan`.
+- Runs scripts as subprocesses, logs batch details, and updates the `ingestion_metadata` run date _only_ if all subprocesses exit successfully.
 
 ---
 
-## 🧩 The `src/components/` Folder (UI Puzzle Pieces)
+## ⚙️ Setup & Local Run Instructions
 
-This folder contains the reusable React components that make up the visual interface of the website.
+### 1. Environment Configuration
 
-### 15. `CorporateActions.tsx`
+Create a `.env` file in the project root:
 
-- **What is it?**
-  This is a massive UI component responsible for displaying the "Corporate Actions" section on a company's page. It handles 6 different tabs (Dividends, Bonus, Splits, Rights, Buybacks, Quarterly Results). It builds the interactive buttons, fetches the data from the backend API, sorts the tables, and even draws a beautiful Bar Chart for the dividend history.
-- **Why do we need it?**
-  A stock's historical data can be massive. If we just dumped hundreds of rows of dividend and stock split data onto the screen at once, it would be overwhelming to read and slow to load. This component organizes that massive dataset into a neat, interactive, tabbed interface.
+```env
+# Database Credentials
+DATABASE_URL="postgresql://<username>:<password>@<host>:<port>/<database>?sslmode=require"
 
-#### 🔍 Deep Dive: The Most Important Lines
-
-**Line 1: The Browser Border (`"use client";`)**
-
-```tsx
-"use client";
+# Ingestion Settings
+CORP_ACT_LOOKAHEAD_DAYS=90
 ```
 
-- Next.js tries to build all the HTML on the server by default (which is fast). But servers don't have "mice" to click things. Because this component relies heavily on `onClick` events, state (`useState`), and interactive charts, we put `"use client"` at the top. It explicitly tells Next.js: _"Hey, this component is highly interactive. Send the raw JavaScript to the user's browser and let their laptop run it."_
+### 2. Launch the Web Application
 
-**Lines 21-70: The Configuration Matrix (`COLS`)**
+```bash
+# Install packages
+npm install
 
-```tsx
-const COLS: Record<CorporateActionTabKey, ColDef[]> = { ... }
+# Run formatter
+npm run format
+
+# Run dev server
+npm run dev
 ```
 
-- Instead of hard-coding 6 completely different massive HTML `<table>` structures (which would take 1,000+ lines of code), we use this dictionary. It defines the exact columns needed for each tab. The actual HTML table later in the code is just a simple `map()` loop that dynamically builds itself based on whatever tab is active.
+Open [http://localhost:3000](http://localhost:3000) to view the web dashboard.
 
-**Lines 109-120: The "Eager" Count Fetcher & Backend SQL**
+### 3. Run the Python Ingestion Pipeline
 
-```tsx
-fetch(`/api/stock/${isin}/corporate-counts`);
+```bash
+cd Backend
+pip install -r requirements.txt
+
+# Run full pipeline
+python main.py
 ```
-
-- When the page first loads, we immediately ask the database for the total count of records for each tab. This allows us to put cute number badges next to the tab names (e.g., `Dividends 3`).
-- **The Backend SQL (`src/app/api/stock/[isin]/corporate-counts/route.ts`):**
-
-```sql
-SELECT COUNT(*)::int AS c FROM corporate_actions_dividends WHERE isin = $1
-```
-
-**Lines 164-168: The "Lazy Loading" Architecture & Backend SQL**
-
-```tsx
-{
-  CORPORATE_ACTION_TABS.map((t) =>
-    t.key === active && loaded.has(t.key) ? <TabPanel key={t.key} tab={t.key} isin={isin} /> : null,
-  );
-}
-```
-
-- **Performance Optimization:** We do **not** fetch the data for all 6 tabs when the page loads (which would hammer our database with 6 simultaneous queries). We only fetch and render a `TabPanel` the very first time a user explicitly clicks on it.
-- **The Backend SQL (`src/app/api/stock/[isin]/[action]/route.ts`):** When a tab is clicked, this query fires to fetch the timeline:
-
-```sql
-SELECT row_hash, isin, sym, disp_sym, exch, inst, seg, seosym,
-       ltp, volume, pchange, pperchange, act_type, ann_date, ann_ltp,
-       div_type, ex_date, note, rec_date, rmk, fetched_at
-FROM corporate_actions_dividends -- (dynamically swapped per tab)
-WHERE isin = $1
-ORDER BY ex_date DESC NULLS LAST
-```
-
-**Line 299: The Chart Engine**
-
-```tsx
-{
-  tab === "dividends" && rows.length >= 3 && <DividendChart rows={sorted} />;
-}
-```
-
-- If the user is on the Dividends tab, and the company has at least 3 records, it automatically renders a gorgeous, animated bar chart using the `recharts` library at the bottom of the table.
-- **Why only Dividends?** Dividends provide a concrete numerical value (the announcement price) that investors use to track historical trends. Other actions like Splits are ratios (e.g., 2:1) which cannot be plotted on a standard price Y-axis, and Quarterly Results would require completely different profit metrics.
-
-> 🎙️ **Interviewer Answer:** _"It's a complex, client-side React component that renders the tabbed Corporate Actions interface. It implements lazy-loading for data fetching (only hitting the API when a tab is clicked), dynamic column generation for tables, and utilizes `recharts` for data visualization."_
-
-### 16. `ThemeToggle.tsx`
-
-- **What is it?**
-  This is the interactive Sun/Moon button that sits in the top-right corner of the website. When you click it, it instantly flips the entire application between Dark Mode and Light Mode.
-- **Why do we need it?**
-  Users have strong preferences for light vs. dark mode. This component not only switches the colors instantly, but it also remembers your choice using the browser's `localStorage` so it persists across page reloads.
-
-#### 🔍 Deep Dive: The Most Important Lines
-
-**Lines 17-21: The `localStorage` Trap**
-
-```tsx
-try {
-  localStorage.setItem("singest-theme", theme);
-} catch {
-  // Ignore errors caused by restricted localStorage access
-}
-```
-
-- **How it's remembered:** When you click the button, we save the string `"light"` or `"dark"` into the browser's permanent memory (`localStorage`). However, the choice is actually _retrieved_ inside `src/app/layout.tsx` using a blocking inline `<script>`. That script runs _before_ the website paints, reading `localStorage` and forcing the theme immediately to prevent the screen from flashing white (FOUC).
-- **The Safari Bug:** If a user visits using Safari's "Private Browsing", Safari strictly blocks access to `localStorage`. If we didn't wrap the save action inside a `try/catch` block, the entire website would completely crash with a fatal error the moment a private-mode user clicked the button.
-
-**Lines 26-31: The "Hydration" Fix (`mounted`)**
-
-```tsx
-const [mounted, setMounted] = useState(false);
-
-useEffect(() => {
-  setTheme(getInitial());
-  setMounted(true);
-}, []);
-```
-
-- Next.js renders HTML on the server. The server doesn't know if your laptop is in Light or Dark mode, so it guesses "Dark". If Next.js sends the "Dark" Sun icon to your browser, but your browser's local storage says "Light", React will detect the difference and panic, throwing a massive "Hydration Mismatch" error. By waiting for the component to "mount" (which only happens in the browser) before rendering the icons, we completely sidestep the crash.
-
-**Lines 46-60: The Smooth Animation**
-
-```tsx
-<Sun
-  className={`h-4 w-4 transition-all duration-300 ${
-    mounted && theme === "dark" ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
-  }`}
-/>
-```
-
-- Instead of complex JavaScript animations, we use Tailwind CSS. When the theme changes to light, the Sun physically spins (`rotate-90`), shrinks (`scale-0`), and fades away (`opacity-0`) over exactly 300 milliseconds (`duration-300`). At the exact same time, the Moon icon spins in and grows to full size, creating a premium feeling transition.
-
-> 🎙️ **Interviewer Answer:** _"It's a client-side React component that manages the application's light and dark mode states. It safely interacts with `localStorage` (via a try/catch to prevent private-mode crashes) to persist preferences, modifies the root HTML element classes for global CSS changes, and utilizes a mounting technique to prevent hydration mismatches."_
-
-### 17. `PeerComparison.tsx`
-
-- **What is it?**
-  This is the massive table you see on a stock's page that allows you to compare it against its closest competitors. It pulls in other companies in the same industry and lines up all their financial metrics (like P/E ratio, Market Cap, and Dividend Yield) side-by-side.
-- **Why do we need it?**
-  Looking at a single company's P/E ratio in a vacuum isn't very helpful. A P/E of 30 might be terrible for a steel company, but amazing for a tech company. By building a side-by-side comparison table, users can instantly see if a stock is overvalued or undervalued relative to its specific industry.
-
-#### 🔍 Deep Dive: The Most Important Lines
-
-**Lines 61-127: The Column Factory**
-
-```tsx
-const cols: Col[] = [
-  { key: "ltp", header: "CMP (₹)", sortable: true, render: (p) => fmtPrice(p.ltp) },
-  // ... 10 more columns
-];
-```
-
-- Just like in `CorporateActions.tsx`, we use a configuration array to build the table rather than writing raw HTML. The real magic here is the `render` property. We use the formatting factory (`fmtPrice`, `fmtPct`) we built in `src/lib/format.ts` to instantly transform the ugly database numbers into beautiful, comma-separated strings right inside the column definition.
-
-**Lines 48-59: The Client-Side Sorting Engine & Backend SQL**
-
-```tsx
-const sorted = useMemo(() => { ... arr.sort(...) });
-```
-
-- When a user clicks the "P/E" column header to sort the highest P/E ratios to the top, we do **not** send a new request to the database (which would be slow). Instead, we use React's `useMemo` to instantly sort the data directly inside the user's browser. We use our trusted `num()` helper to ensure JavaScript sorts them numerically (1, 2, 10) rather than alphabetically (1, 10, 2).
-- **The Backend SQL (`src/app/api/stock/[isin]/peers/route.ts`):** How does it actually fetch the peers before sorting? It uses a clever 3-step fallback logic:
-  1. **Find Weight Class:** `SELECT mcapclass FROM custom_scan WHERE isin = $1 LIMIT 1`
-  2. **Grab Heavyweights:**
-  ```sql
-  SELECT isin, sym, disp_sym, ltp, pperchange, mcap, pe, div_yeild, roce, roe, eps, pb, net_profit_margin, volume
-  FROM custom_scan WHERE mcapclass = $1 ORDER BY mcap DESC NULLS LAST LIMIT 10
-  ```
-  3. **The "Hero" Guarantee:** If the current stock wasn't in that top 10, it manually fetches it to ensure it's in the table: `SELECT ... FROM custom_scan WHERE isin = $1 LIMIT 1`
-
-**Lines 188-198: Highlighting the "Hero"**
-
-```tsx
-const isCurrent = p.isin === isin;
-return (
-  <tr style={{ background: isCurrent ? "color-mix(in oklab, var(--primary) 12%, transparent)" : undefined }}>
-```
-
-- When looking at a table of 15 different companies, it's easy to lose track of the one you are actually researching. Inside the loop that builds the table rows, we check: _"Is this row the stock the user is currently researching?"_ If yes, we inject custom CSS to give it a bright tinted background and a thick colored left border, making it pop off the screen.
-
-### 📊 Where Do the Numbers Come From?
-
-Every single numeric value you see in the Peer Comparison table is an **exact, pre-calculated value** pulled directly from the **`custom_scan`** table in the PostgreSQL database. The React frontend does **zero mathematical calculations**. It does not calculate the P/E ratio by dividing price by EPS; it relies 100% on the backend database having those numbers ready to go.
-
-Here is the exact 1-to-1 mapping of the table headings to the `custom_scan` database columns:
-
-- **Name** → `disp_sym` | **CMP (₹)** → `ltp` | **Change %** → `pperchange` | **Mkt Cap (Cr.)** → `mcap`
-- **P/E** → `pe` | **P/B** → `pb` | **Div Yield %** → `div_yeild` | **ROCE %** → `roce`
-- **ROE %** → `roe` | **NPM %** → `net_profit_margin` | **EPS** → `eps`
-
-> 🎙️ **Interviewer Answer:** _"It's a client-side React component that fetches and renders a sortable data table comparing a specific stock against its industry peers. It utilizes a column configuration array to keep the rendering logic DRY, relies on our central `format.ts` library for data serialization, and dynamically highlights the current stock using conditional CSS."_
-
----
-
-## 🌐 The Next.js App Router Folder (`src/app/`)
-
-The `src/app/` directory uses Next.js App Router layout conventions to define the pages, layouts, custom error pages, and API routes of our web application.
-
-### 18. `error.tsx`
-
-- **What is it?**
-  This is a specialized Next.js error boundary component. In the Next.js App Router, if a client-side or server-side rendering error occurs anywhere within a route segment, Next.js catches the error and automatically swaps out the broken part of the page with this visual fallback screen.
-- **Why do we need it?**
-  Without this file, a runtime JavaScript error in any component would crash the entire website, showing a blank white screen or a browser error. Having a custom `error.tsx` ensures we keep the user interface graceful, log the issue, and give the user options to recover without a full page reload.
-
-#### 🔍 Deep Dive: The Most Important Lines
-
-**Line 1: The Client Boundary**
-
-```tsx
-"use client";
-```
-
-- **Why it must be client-side:** Error boundaries in React _must_ be client components because they hook into the browser's runtime rendering lifecycle to intercept exceptions.
-
-**Lines 4-10: The Error Props**
-
-```tsx
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
-```
-
-- **`error`**: The actual error object that was thrown. It includes a `digest` string which is a unique hash of the error. In production, Next.js obfuscates error messages to prevent leaking sensitive server details, but provides this `digest` so you can look up the full error details in your server logs.
-- **`reset`**: A built-in Next.js function that attempts to re-render the segment that errored. If the issue was a temporary network timeout or a transient rendering glitch, clicking the reset button will recover the page seamlessly.
-
-**Lines 11-13: The Logger**
-
-```tsx
-useEffect(() => {
-  console.error(error);
-}, [error]);
-```
-
-- Whenever an error triggers this boundary, we log it directly to the browser console. In a production app, this is where you would hook up telemetry tools (like Sentry or LogRocket) to report the bug back to the engineering team.
-
-**Lines 25-30: The Reset Button**
-
-```tsx
-          <button
-            onClick={() => reset()}
-```
-
-- This triggers the Next.js `reset()` function, trying to reload only the broken route segment. It offers a much smoother user experience than forcing the user to manually refresh their entire browser.
-
-> 🎙️ **Interviewer Answer:** _"It is a client-side React error boundary component that catches runtime exceptions in child route segments. It prevents full-page crashes by rendering a fallback UI, logging the exception, and providing a `reset` callback to attempt state recovery without reloading the entire application."_
-
-### 19. `layout.tsx`
-
-- **What is it?**
-  This is the Root Layout of our Next.js App Router application. It acts as the outer shell of the website, defining the global HTML document structure (`<html>` and `<body>` tags), global typography settings, meta tags for SEO/social media sharing, viewport controls, and the theme bootstrap script.
-- **Why do we need it?**
-  Without this file, Next.js would not know how to construct the basic HTML page structure. It allows us to apply configurations that must persist across all pages (like the Google Inter font, our global CSS styles, and the dark mode theme loader) so that page transitions feel fast and seamless without redownloading the main layout frame.
-
-#### 🔍 Deep Dive: The Most Important Lines
-
-**Lines 5-8: Font Optimization (`Inter`)**
-
-```typescript
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-```
-
-- **Performance Gain:** This imports the Google **Inter** font using Next.js's built-in font optimization engine. Next.js automatically downloads the font files at build time and bundles them locally. This avoids calling Google's servers at runtime, eliminating layout shifts (CLS) and reducing page-load latency. It assigns the font family to the CSS variable `--font-sans`.
-
-**Lines 10-22: SEO & Social Metadata (Website Identity)**
-
-```typescript
-export const metadata: Metadata = { ... };
-```
-
-- **Making it simple:** Think of this as the "identity card" of our website for search engines and social media.
-  - **SEO (Search Engine Optimization):** Sets the text shown on the browser tab (title) and the short summary under the link in Google search results (description).
-  - **OpenGraph & Twitter tags:** When you copy-paste the website link into WhatsApp, Slack, or Twitter/X, these settings are what automatically generate the nice "preview card" (showing a title and description instead of just a raw, boring link).
-  - **Next.js Magic:** Instead of us writing messy, repetitive HTML tags manually, Next.js takes this clean TypeScript object and automatically translates it into the standard `<title>` and `<meta>` tags inside the browser's hidden `<head>` element behind the scenes.
-
-**Lines 33-37: The Theme Flickering Fix (Inline Script)**
-
-```javascript
-(function () {
-  try {
-    var t = localStorage.getItem("singest-theme");
-    var d = document.documentElement;
-    if (t === "light") {
-      d.classList.remove("dark");
-      d.classList.add("light");
-    } else {
-      d.classList.remove("light");
-      d.classList.add("dark");
-    }
-  } catch (e) {}
-})();
-```
-
-- **Preventing FOUC:** If we waited for React to mount and set the theme (client-side JS execution), a user who selected Light Mode would see the website render in Dark Mode first (its default server state), and then flash to white a split-second later. This visual flicker is called a Flash of Unstyled Content (FOUC).
-- By executing this inline, self-invoking script in the `<head>` _before_ the document body begins rendering, the browser checks `localStorage` and adjusts the CSS class on the root HTML element before painting any pixels on screen.
-
-**Line 31: `suppressHydrationWarning`**
-
-```html
-<html lang="en" className="dark" suppressHydrationWarning></html>
-```
-
-- Because the server renders the page with class `"dark"`, but our inline script might change it to `"light"` in the browser before React hydrates, React's hydration engine will detect that the server-rendered class (`"dark"`) does not match the actual DOM class (`"light"`). To prevent React from throwing a hydration mismatch warning in the console, we add `suppressHydrationWarning` to the `<html>` tag.
-
-> 🎙️ **Interviewer Answer:** _"It is the root layout of our Next.js App Router app, responsible for bootstrapping the global HTML/body structures, optimizing typography using Google fonts, and setting global SEO metadata. It also executes a blocking inline script in the head to apply the correct theme from local storage before initial rendering to prevent theme flickering (FOUC), and uses `suppressHydrationWarning` to allow runtime class modifications without React hydration errors."_
-
-### 20. `not-found.tsx`
-
-- **What is it?**
-  This is our custom 404 (Page Not Found) fallback screen. In Next.js App Router, if a user navigates to a URL path that does not exist (like `/non-existent-page`), or if our code explicitly triggers the `notFound()` function (for example, if a user tries to load details for a stock ticker that doesn't exist in our database), Next.js automatically renders this component.
-- **Why do we need it?**
-  Instead of letting the browser render a generic, unstyled 404 page, a custom `not-found.tsx` keeps the styling, color theme (dark/light mode), typography, and general user experience consistent. It also guides users back to safety by providing an active navigation button to return to the homepage.
-
-#### 🔍 Deep Dive: The Most Important Lines
-
-**No `"use client"` Boundary (Static Server Component)**
-
-- Notice that `not-found.tsx` lacks a `"use client"` directive. It is rendered on the server. Because it doesn't need to track local state or register user interaction listeners, Next.js compiles this page down to a static HTML file at build time, resulting in near-instant load speeds.
-
-**Lines 13-18: Client-Side Navigation (`Link`)**
-
-```tsx
-<Link href="/" className="...">
-  Go home
-</Link>
-```
-
-- **Performance Benefit:** We use Next.js's native `<Link>` component instead of a standard HTML anchor tag (`<a>`). The native Link component intercepts click events and uses client-side routing to load the homepage. This renders the target page without initiating a full, slow browser refresh, ensuring a smooth, fluid user transition.
-
-> 🎙️ **Interviewer Answer:** _"It is a static fallback component for rendering custom 404 pages. It automatically intercepts unmatched routes or programmatically invoked `notFound()` triggers. Because it does not use client-side state hooks, it compiles to static HTML at build time for optimal loading speed, and leverages Next.js `<Link>` components for seamless client-side page transitions."_
