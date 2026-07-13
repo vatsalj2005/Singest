@@ -50,7 +50,7 @@ export default function Dashboard() {
     }
 
     fetchOverview();
-    const interval = setInterval(fetchOverview, 30_000);
+    const interval = setInterval(fetchOverview, 600_000);
     return () => {
       active = false;
       clearInterval(interval);
@@ -300,7 +300,7 @@ function StockSearch() {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(q.trim()), 200);
+    const t = setTimeout(() => setDebounced(q.trim()), 500);
     return () => clearTimeout(t);
   }, [q]);
 
