@@ -277,7 +277,7 @@ export function StockPageClient({ stock, news }: { stock: Row; news: NewsHeadlin
                   />
 
                   <Line
-                    type="linear"
+                    type="monotone"
                     dataKey="value"
                     stroke="var(--primary)"
                     strokeWidth={2}
@@ -435,8 +435,8 @@ function RsiGauge({ value }: { value: number | null }) {
   const cx = 80;
   const cy = 80;
   const r = 60;
-  const x = cx + r * Math.cos(rad);
-  const y = cy - r * Math.sin(rad);
+  const x = Number((cx + r * Math.cos(rad)).toFixed(4));
+  const y = Number((cy - r * Math.sin(rad)).toFixed(4));
 
   const zone = value == null ? "—" : v < 30 ? "Oversold" : v > 70 ? "Overbought" : "Neutral";
   const zoneColor =
@@ -452,10 +452,10 @@ function RsiGauge({ value }: { value: number | null }) {
   const arc = (from: number, to: number) => {
     const a1 = ((180 - (from / 100) * 180) * Math.PI) / 180;
     const a2 = ((180 - (to / 100) * 180) * Math.PI) / 180;
-    const x1 = cx + r * Math.cos(a1);
-    const y1 = cy - r * Math.sin(a1);
-    const x2 = cx + r * Math.cos(a2);
-    const y2 = cy - r * Math.sin(a2);
+    const x1 = (cx + r * Math.cos(a1)).toFixed(4);
+    const y1 = (cy - r * Math.sin(a1)).toFixed(4);
+    const x2 = (cx + r * Math.cos(a2)).toFixed(4);
+    const y2 = (cy - r * Math.sin(a2)).toFixed(4);
     return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;
   };
 
