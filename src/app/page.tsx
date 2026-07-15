@@ -12,7 +12,7 @@ import {
   ArrowDownRight,
   LineChart as LineChartIcon,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeToggle } from "@/lib/ThemeToggle";
 import { fmtPct, fmtPrice, timeAgo } from "@/lib/format";
 import type { StockSummary, NewsArticle } from "@/lib/types";
 

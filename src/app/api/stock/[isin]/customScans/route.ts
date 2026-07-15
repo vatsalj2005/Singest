@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         )
       : [];
 
-    // Ensure current stock is included
+    // Ensure the active stock is included
     const hasCurrent = peers.some((p) => p.isin === isin);
     let final = peers;
     if (!hasCurrent) {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ mcapclass, peers: final, currentIsin: isin }, { headers });
   } catch (error) {
-    console.error("Failed to fetch peers:", error);
+    console.error("Failed to fetch custom scan peers:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

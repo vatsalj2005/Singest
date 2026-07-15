@@ -25,7 +25,7 @@ export function PeerComparison({ isin }: { isin: string }) {
   useEffect(() => {
     let active = true;
     setPeersLoading(true);
-    fetch(`/api/stock/${isin}/peers`)
+    fetch(`/api/stock/${isin}/customScans`)
       .then((r) => r.json())
       .then((data) => {
         if (active) {

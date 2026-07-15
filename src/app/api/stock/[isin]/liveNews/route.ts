@@ -7,21 +7,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { isin } = await params;
     const rows = await query<Record<string, unknown>>(
-      `SELECT * FROM custom_scan WHERE isin = $1 LIMIT 1`,
-      [isin],
-    );
-    if (!rows[0]) {
-      return NextResponse.json(
-        { error: "Not found" },
-        {
-          status: 404,
-          headers: {
-            "Cache-Control": "no-store, max-age=0, must-revalidate",
-          },
-        },
-      );
-    }
-    const news = await query<Record<string, unknown>>(
       `SELECT article_id, title, overall_sentiment, category, sub_category, publish_date
        FROM live_news
        WHERE isin_code = $1
@@ -29,8 +14,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
        LIMIT 10`,
       [isin],
     );
+
     return NextResponse.json(
-      { stock: rows[0], news },
+      { news: rows },
       {
         headers: {
           "Cache-Control": "no-store, max-age=0, must-revalidate",
@@ -38,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       },
     );
   } catch (error) {
-    console.error("Failed to fetch stock info:", error);
+    console.error("Failed to fetch live news:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

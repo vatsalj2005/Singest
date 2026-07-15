@@ -108,7 +108,7 @@ export function CorporateActions({ isin }: { isin: string }) {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/stock/${isin}/corporate-counts`)
+    fetch(`/api/stock/${isin}/corporateActions`)
       .then((r) => r.json())
       .then((data) => {
         if (active) setCountsData(data);
@@ -178,7 +178,7 @@ function TabPanel({ tab, isin }: { tab: CorporateActionTabKey; isin: string }) {
   useEffect(() => {
     let active = true;
     setIsLoading(true);
-    fetch(`/api/stock/${isin}/${tab}`)
+    fetch(`/api/stock/${isin}/corporateActions?action=${tab}`)
       .then((r) => r.json())
       .then((data) => {
         if (active) {

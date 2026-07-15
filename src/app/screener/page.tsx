@@ -12,7 +12,7 @@ import {
   Search as SearchIcon,
   Sparkles,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeToggle } from "@/lib/ThemeToggle";
 import { fmtPrice, fmtPct, fmtCr, fmtN, fmtInt, pctCls, mcapBadge } from "@/lib/format";
 import type { ScreenerRow } from "@/lib/types";
 
