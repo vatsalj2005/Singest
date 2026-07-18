@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       },
     );
   } catch (error) {
-    console.error("Failed to fetch news:", error);
+    console.error("Failed to fetch live news:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

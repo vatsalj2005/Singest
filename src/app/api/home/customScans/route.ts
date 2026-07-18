@@ -40,7 +40,7 @@ export async function GET() {
       },
     );
   } catch (error) {
-    console.error("Failed to fetch market overview:", error);
+    console.error("Failed to fetch market overview custom scans:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

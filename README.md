@@ -38,7 +38,10 @@ graph TD
 │
 └── src/                     # Next.js web application
     ├── app/                 # Next.js App Router
-    │   ├── api/             # REST endpoints (corporateActions, customScans, liveNews)
+    │   ├── api/             # REST endpoints namespaces
+    │   │   ├── home/        # Home API (customScans, liveNews, search)
+    │   │   └── stock/[isin]/# Stock API (corporateActions, customScans, liveNews)
+    │   ├── (home)/          # Root landing page files (page, search, overview, news)
     │   ├── screener/        # Stock Screener page
     │   └── stock/[isin]/    # Component-isolated dynamic profile page
     │
