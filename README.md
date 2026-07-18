@@ -107,10 +107,10 @@ python main.py
 
 All SQL queries, table names, and column definitions are centralized into dedicated **Data Access Layer** files — one per codebase:
 
-| Codebase | DAL File | What it contains |
-|----------|----------|------------------|
-| Frontend (TypeScript) | `src/lib/dal.ts` | 8 table name constants, 6 column lists, 15 typed query functions |
-| Backend (Python) | `Backend/dal.py` | 8 table name constants, CREATE TABLE schemas, all INSERT/UPSERT SQL |
+| Codebase              | DAL File         | What it contains                                                    |
+| --------------------- | ---------------- | ------------------------------------------------------------------- |
+| Frontend (TypeScript) | `src/lib/dal.ts` | 8 table name constants, 6 column lists, 15 typed query functions    |
+| Backend (Python)      | `Backend/dal.py` | 8 table name constants, CREATE TABLE schemas, all INSERT/UPSERT SQL |
 
 **Why?** If a table is renamed or a column changes, you update **one file per codebase** instead of hunting through dozens of route handlers and ingestion scripts.
 
