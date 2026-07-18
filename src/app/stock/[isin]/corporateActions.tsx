@@ -96,10 +96,6 @@ function fmtText(v: unknown): string {
   return String(v);
 }
 
-function truncate(s: string, n: number) {
-  return s.length > n ? s.slice(0, n) + "…" : s;
-}
-
 export function CorporateActions({ isin }: { isin: string }) {
   const [active, setActive] = useState<CorporateActionTabKey>("dividends");
   const [loaded, setLoaded] = useState<Set<CorporateActionTabKey>>(new Set(["dividends"]));
@@ -327,14 +323,10 @@ function TableCell({ col, row }: { col: ColDef; row: Row }) {
 
   const text = fmtText(v);
   const isRmk = col.key === "rmk";
-  if (isRmk && text !== "—" && text.length > 50) {
-    return (
-      <td className="px-4 py-3" title={text}>
-        {truncate(text, 50)}
-      </td>
-    );
+  if (isRmk && text !== "—") {
+    return <td className="px-4 py-3 min-w-[280px] whitespace-normal break-words">{text}</td>;
   }
-  return <td className="px-4 py-3">{text}</td>;
+  return <td className="px-4 py-3 whitespace-normal break-words">{text}</td>;
 }
 
 function DividendChart({ rows }: { rows: Row[] }) {

@@ -118,8 +118,10 @@
 
 @utility glass {
   background: color-mix(in oklab, var(--card) 70%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(130%);
   border: 1px solid var(--color-border);
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 :root.light .glass,
@@ -129,17 +131,29 @@
 
 @utility glass-card {
   background: color-mix(in oklab, var(--card) 70%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(130%);
   border: 1px solid var(--color-border);
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 .glass-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 10px 40px -10px color-mix(in oklab, var(--primary) 35%, transparent);
+  transform: scale(1.015) translateZ(0);
+  box-shadow: 0 10px 30px -10px color-mix(in oklab, var(--primary) 30%, transparent);
   border-color: color-mix(in oklab, var(--primary) 40%, var(--color-border));
+}
+
+@utility bg-grain-fixed {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  opacity: 0.6;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 @keyframes singest-stagger {

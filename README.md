@@ -1,131 +1,142 @@
 # Singest 📈
 
-**Singest** is a premium, high-performance web dashboard and screening application tailored for tracking Indian equities (NSE & BSE). Built with Next.js 15, React 19, and CockroachDB, it combines real-time data filtering with an asynchronous news and corporate action timeline.
+Singest is a modern, high-fidelity stock analysis and market intelligence platform. It provides a fast, interactive interface to screen National Stock Exchange (NSE) listed equities, view detailed performance highlights, track corporate actions (dividends, splits, results, etc.), and monitor live financial news with real-time sentiment analysis.
 
 ---
 
-## ⚡ Key Capabilities
+## Key Features
 
-- **🏠 Real-time Market Overview:** Live tracking of top gainers, top losers, and market capitalizations.
-- **🔍 Interactive Dual-State Screener:** Filter stocks instantly by P/E bounds, ROCE, ROE, Dividend Yield, and Market Cap class. Uses stateful filters to minimize server-side database load.
-- **📊 Dynamic Stock Profile:** Individual pages showing 5-year price performance charts, technical moving averages (SMA 50, SMA 200, Bollinger Width, ATR), trigonometric SVG RSI gauges, peer comparison tables, and corporate actions.
-- **⚙️ Background Ingest Pipeline:** Dedicated Python scripts that pull corporate actions, news sentiment, and scans from external Dhan APIs and dynamically upsert them.
+* **Interactive Stock Screener:** 
+  Filter and analyze 2,900+ NSE-listed stocks in real-time. Apply combined queries on Market Cap, valuation (P/E, P/B), returns (RoCE, RoE), Dividend Yield, profit margins, 1-Year price changes, and trading volume.
+* **Detailed KPI Scans:** 
+  View 16 distinct key performance indicators (KPIs) for any given ticker, including moving average crossovers, breakout trends, volume anomalies, and valuation scoring.
+* **Historical Corporate Actions:** 
+  Tabulated views and interactive timeline charts for dividends, bonus shares, splits, rights, buybacks, and quarterly financial result announcements.
+* **Live News Feed & Sentiment Engine:** 
+  Aggregation of recent market news, categorizing reports by sector/topic and tagging them with sentiment signals (Positive, Neutral, Negative).
+* **High-Performance UI Design:** 
+  Vibrant modern aesthetics with GPU-accelerated glassmorphism layouts, hardware-accelerated background gradients to prevent scroll jank, and full dark/light mode support.
 
 ---
 
-## 🏗️ Architecture & Data Flow
+## Tech Stack & Architecture
 
-```mermaid
-graph TD
-    A[Python Ingestion Scripts] -->|JSON Feed| B[(CockroachDB / Postgres)]
-    B -->|Server Query| C[Next.js Server Page]
-    B -->|REST APIs| D[Client Components]
-    C -->|Core Metrics| E[User View]
-    D -->|Lazy Action Tables| E
-    D -->|Live News Feed| E
-    D -->|Competitor Peers| E
+### Frontend (Next.js App)
+* **Core:** [Next.js 15](https://nextjs.org/) (App Router, Server Actions, API routes)
+* **Language:** TypeScript
+* **Styling:** Tailwind CSS (v4) with vanilla CSS utility layers
+* **Charts:** Recharts (responsive vector charts)
+* **Icons:** Lucide React
+* **Database Driver:** `pg` (node-postgres with optimized connection pooling)
+
+### Ingestion Backend (Python Pipeline)
+* **Core:** Python Ingestion Pipeline (`Backend/`)
+* **Libraries:** `requests` (API fetching), `psycopg2-binary` (CockroachDB connection)
+* **Functions:** Fetching and upserting records, deduplication using MD5 hashing, and log capturing for synchronization statuses.
+
+### Database
+* **CockroachDB / PostgreSQL:** Highly available distributed SQL database hosting real-time security tables, financial facets, historical actions, and news logs.
+
+---
+
+## Project Structure
+
+```text
+Singest/
+├── Backend/                    # Python Ingestion Pipeline
+│   ├── scripts/                # Cron-ready Python ingestion scripts
+│   │   ├── ingest_corporate_actions.py
+│   │   ├── ingest_custom_scan.py
+│   │   └── ingest_live_news.py
+│   ├── dal.py                  # Backend Database Access Layer (SQL templates)
+│   └── requirements.txt        # Python dependency checklist
+├── src/                        # Next.js Application Source
+│   ├── app/                    # Routing, layouts, and page controllers
+│   │   ├── (home)/             # Main dashboard feed & global search
+│   │   ├── api/                # Internal JSON endpoints
+│   │   ├── screener/           # Stock screener component group
+│   │   └── stock/[isin]/       # Ticker-specific deep-dive charts & logs
+│   ├── lib/                    # Shared library abstractions
+│   │   ├── dal.ts              # Unified Database Access Layer (frontend queries)
+│   │   ├── db.server.ts        # Database connection pool setup
+│   │   ├── format.ts           # Number/currency formatting functions
+│   │   └── types.ts            # Type definitions & constants
+│   └── styles.css              # Main design system & custom CSS variables
 ```
 
 ---
 
-## 📁 Repository Directory Structure
+## Getting Started
 
-```bash
-├── Backend/                 # Python ingestion pipeline
-│   ├── scripts/             # Data fetchers (corporate actions, news, scans)
-│   ├── dal.py               # Data Access Layer — all table names, schemas & SQL
-│   ├── main.py              # Subprocess pipeline orchestrator
-│   └── requirements.txt     # Python dependencies
-│
-└── src/                     # Next.js web application
-    ├── app/                 # Next.js App Router
-    │   ├── api/             # REST endpoints namespaces
-    │   │   ├── home/        # Home API (customScans, liveNews, search)
-    │   │   ├── screener/    # Screener API (filtered results, facets)
-    │   │   └── stock/[isin]/# Stock API (corporateActions, customScans, liveNews)
-    │   ├── (home)/          # Root landing page files (page, search, overview, news)
-    │   ├── screener/        # Stock Screener page
-    │   └── stock/[isin]/    # Component-isolated dynamic profile page
-    │
-    ├── lib/                 # Shared utilities & data access
-    │   ├── dal.ts           # Data Access Layer — all table names, columns & queries
-    │   ├── db.server.ts     # Low-level pg.Pool connection singleton
-    │   ├── types.ts         # Shared TypeScript types
-    │   └── ...              # Theme toggler, formatters, etc.
-    └── styles.css           # Styling configuration (Tailwind CSS v4 & theme variables)
-```
-
----
-
-## 🚀 Getting Started
-
-### 📋 Prerequisites
-
-- Node.js 18.x or later
-- Python 3.10 or later
-- A running PostgreSQL or CockroachDB instance
-
-### 1. Configure the Environment
-
-Create a `.env` file in the project root folder:
+### 1. Configuration Setup
+Create a `.env` file in the project root directory. You can use the `.env.example` file as a reference:
 
 ```env
-# Database connection string
-DATABASE_URL="postgresql://<username>:<password>@<host>:<port>/<database>?sslmode=require"
-
-# Number of days to look ahead for corporate actions (default: 90)
-CORP_ACT_LOOKAHEAD_DAYS=90
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/defaultdb?sslmode=require
+PORT=3000
 ```
 
-### 2. Setup the Web Application
+### 2. Run the Frontend (Next.js)
 
+First, install the package dependencies:
 ```bash
-# Install dependencies
 npm install
+```
 
-# Run the dev server
+Start the application in development mode:
+```bash
 npm run dev
 ```
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the platform.
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
-
-### 3. Setup the Data Ingestion Pipeline
-
+To build and run the optimized production application (recommended for fluid performance):
 ```bash
-cd Backend
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run ingestion script
-python main.py
+npm run build
+npm run start
 ```
 
+### 3. Run the Data Ingestion Pipelines (Python)
+
+Navigate to the `Backend/` folder (or run from the root). Create a virtual environment and install the required modules:
+
+```bash
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+pip install -r Backend/requirements.txt
+```
+
+You can now run any of the standalone ingestion pipelines to update the database tables:
+
+* **Ingest Corporate Actions (Dividends, splits, results etc.):**
+  ```bash
+  python Backend/scripts/ingest_corporate_actions.py
+  ```
+* **Ingest Custom Scans (Price indices, volume metrics, stock metadata):**
+  ```bash
+  python Backend/scripts/ingest_custom_scan.py
+  ```
+* **Ingest Live Headlines (Recent stock news with sentiment ratings):**
+  ```bash
+  python Backend/scripts/ingest_live_news.py
+  ```
+
 ---
 
-## 🗄️ Data Access Layer (DAL)
+## Code Style and Quality
 
-All SQL queries, table names, and column definitions are centralized into dedicated **Data Access Layer** files — one per codebase:
-
-| Codebase              | DAL File         | What it contains                                                    |
-| --------------------- | ---------------- | ------------------------------------------------------------------- |
-| Frontend (TypeScript) | `src/lib/dal.ts` | 8 table name constants, 6 column lists, 15 typed query functions    |
-| Backend (Python)      | `Backend/dal.py` | 8 table name constants, CREATE TABLE schemas, all INSERT/UPSERT SQL |
-
-**Why?** If a table is renamed or a column changes, you update **one file per codebase** instead of hunting through dozens of route handlers and ingestion scripts.
-
-- API routes import query functions from `dal.ts` — no route file writes raw SQL.
-- Ingestion scripts import table init, load, and upsert functions from `dal.py` — no script writes inline SQL.
-
----
-
-## 🛠️ Optimization & Reliability
-
-### 🛡️ Component Isolation & Fallbacks
-
-Every major block on the stock profile page is wrapped in an independent **React Error Boundary** (`SectionErrorBoundary`). If a component fails to render or an API query times out, only that block displays an "Under Maintenance" state while the rest of the page remains fully interactive.
-
-### 🚀 Performance Optimization
-
-- **Server Component Pre-rendering:** The initial stock profile layout and CMP metrics are pre-fetched on the server for instant FCP (First Contentful Paint) and SEO.
-- **Consolidated API Queries:** All dynamic data fetching routes are grouped logically (`corporateActions`, `customScans`, and `liveNews`), avoiding duplicate database queries.
+* **Formatting:** Prettier is configured for uniform spacing and structure. Format all files via:
+  ```bash
+  npm run format
+  ```
+* **Linting:** ESLint is configured to catch runtime bugs and syntax issues:
+  ```bash
+  npm run lint
+  ```
+* **TypeScript Check:** Strict compilation is enforced. Run the check manually:
+  ```bash
+  npx tsc --noEmit
+  ```

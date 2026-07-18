@@ -81,7 +81,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div
-        className="pointer-events-none fixed inset-0 -z-10 opacity-60"
+        className="bg-grain-fixed"
         style={{
           background:
             "radial-gradient(60% 50% at 80% -10%, oklch(0.35 0.12 155 / 0.35), transparent 60%), radial-gradient(50% 40% at 0% 0%, oklch(0.35 0.12 250 / 0.25), transparent 60%)",
