@@ -5,8 +5,6 @@ import logging
 import json
 from datetime import datetime
 import requests
-import psycopg2
-from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 
 # Project root is one level up from this script's directory (scripts/)
@@ -20,8 +18,14 @@ if os.path.exists(local_env):
 else:
     load_dotenv(parent_env)
 
-
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Ensure dal.py can be imported from Backend/
+sys.path.insert(0, PROJECT_ROOT)
+from dal import (
+    get_connection,
+    init_live_news_table,
+    load_existing_article_ids,
+    insert_live_news_records,
+)
 
 # ---------------------------------------------------------------------------
 # Logging Setup
@@ -53,66 +57,6 @@ HEADERS = {
     'referer': 'https://dhan.co/',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36'
 }
-
-# ── Helpers ────────────────────────────────────────────────────────────────
-
-def get_connection():
-    if not DATABASE_URL:
-        raise ValueError("DATABASE_URL is not set in the environment or .env file.")
-    return psycopg2.connect(DATABASE_URL)
-
-
-def load_existing_ids(conn):
-    existing = set()
-    with conn.cursor() as cur:
-        try:
-            cur.execute("SELECT article_id FROM live_news;")
-            for row in cur.fetchall():
-                existing.add(row[0])
-        except Exception as e:
-            logger.warning(f"Could not load existing records: {e}")
-    return existing
-
-
-# ── Table initialisation ───────────────────────────────────────────────────
-
-def init_table():
-    logger.info("Initializing live_news table...")
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS live_news (
-                    article_id BIGINT PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    text TEXT,
-                    overall_sentiment VARCHAR(50),
-                    category VARCHAR(100),
-                    sub_category VARCHAR(100),
-                    publish_date TIMESTAMP WITH TIME ZONE,
-                    stock_name VARCHAR(255),
-                    isin_code VARCHAR(50),
-                    sm_symbol VARCHAR(100),
-                    nse_scrip_code INTEGER,
-                    bse_scrip_code INTEGER,
-                    seo_symbol VARCHAR(100),
-                    display_symbol VARCHAR(100),
-                    article_slug VARCHAR(255),
-                    article_cat VARCHAR(100),
-                    article_subcat VARCHAR(100),
-                    metadata_json JSONB,
-                    fetched_at TIMESTAMP WITH TIME ZONE NOT NULL
-                );
-            """)
-        conn.commit()
-        logger.info("live_news table initialized successfully.")
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to initialize table: {e}")
-        raise
-    finally:
-        conn.close()
-
 
 # ── Network helpers ────────────────────────────────────────────────────────
 
@@ -194,62 +138,15 @@ def fetch_live_news(session, existing_keys):
     return list(all_news_items.values())
 
 
-# ── Insert new records ─────────────────────────────────────────────────────
-
-def insert_records(records):
-    if not records:
-        return
-
-    query = """
-        INSERT INTO live_news (
-            article_id, title, text, overall_sentiment, category, sub_category,
-            publish_date, stock_name, isin_code, sm_symbol, nse_scrip_code,
-            bse_scrip_code, seo_symbol, display_symbol, article_slug,
-            article_cat, article_subcat, metadata_json, fetched_at
-        ) VALUES %s
-        ON CONFLICT (article_id) DO UPDATE SET
-            title = EXCLUDED.title,
-            text = EXCLUDED.text,
-            overall_sentiment = EXCLUDED.overall_sentiment,
-            category = EXCLUDED.category,
-            sub_category = EXCLUDED.sub_category,
-            publish_date = EXCLUDED.publish_date,
-            stock_name = EXCLUDED.stock_name,
-            isin_code = EXCLUDED.isin_code,
-            sm_symbol = EXCLUDED.sm_symbol,
-            nse_scrip_code = EXCLUDED.nse_scrip_code,
-            bse_scrip_code = EXCLUDED.bse_scrip_code,
-            seo_symbol = EXCLUDED.seo_symbol,
-            display_symbol = EXCLUDED.display_symbol,
-            article_slug = EXCLUDED.article_slug,
-            article_cat = EXCLUDED.article_cat,
-            article_subcat = EXCLUDED.article_subcat,
-            metadata_json = EXCLUDED.metadata_json,
-            fetched_at = EXCLUDED.fetched_at;
-    """
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            execute_values(cur, query, records)
-        conn.commit()
-        logger.info(f"Inserted {len(records)} records into live_news.")
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to insert news: {e}")
-        raise
-    finally:
-        conn.close()
-
-
 # ── Main ───────────────────────────────────────────────────────────────────
 
 def main():
     logger.info("Starting live news ingestion...")
-    init_table()
+    init_live_news_table(logger)
 
     # Load database state
     conn = get_connection()
-    existing_records = load_existing_ids(conn)
+    existing_records = load_existing_article_ids(conn, logger)
     conn.close()
 
     logger.info(
@@ -320,7 +217,7 @@ def main():
             formatted_tuples.append(tup)
 
         logger.info(f"Inserting {len(new_items)} new news records (skipped {skipped_count})...")
-        insert_records(formatted_tuples)
+        insert_live_news_records(formatted_tuples, logger)
     else:
         logger.info(f"No new news records. Skipped {skipped_count} existing.")
 

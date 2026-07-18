@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@/lib/db.server";
+import { getNewsByIsin } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ isin: string }> }) {
   try {
     const { isin } = await params;
-    const rows = await query<Record<string, unknown>>(
-      `SELECT article_id, title, overall_sentiment, category, sub_category, publish_date
-       FROM live_news
-       WHERE isin_code = $1
-       ORDER BY publish_date DESC NULLS LAST
-       LIMIT 10`,
-      [isin],
-    );
+    const rows = await getNewsByIsin(isin);
 
     return NextResponse.json(
       { news: rows },

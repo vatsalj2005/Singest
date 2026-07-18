@@ -1,36 +1,22 @@
 import { NextResponse } from "next/server";
-import { query } from "@/lib/db.server";
+import { getCustomScanCount, getTopGainer, getTopLoser, getPopularStocks } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const [countRow] = await query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM custom_scan`,
-    );
-    const [gainer] = await query<Record<string, unknown>>(
-      `SELECT isin, sym, disp_sym, ltp, pperchange, mcapclass
-       FROM custom_scan
-       WHERE pperchange IS NOT NULL
-       ORDER BY pperchange DESC NULLS LAST LIMIT 1`,
-    );
-    const [loser] = await query<Record<string, unknown>>(
-      `SELECT isin, sym, disp_sym, ltp, pperchange, mcapclass
-       FROM custom_scan
-       WHERE pperchange IS NOT NULL
-       ORDER BY pperchange ASC NULLS LAST LIMIT 1`,
-    );
-    const popular = await query<Record<string, unknown>>(
-      `SELECT isin, sym, disp_sym, ltp, pperchange, mcapclass
-       FROM custom_scan
-       ORDER BY mcap DESC NULLS LAST LIMIT 10`,
-    );
+    const [totalStocks, topGainer, topLoser, popular] = await Promise.all([
+      getCustomScanCount(),
+      getTopGainer(),
+      getTopLoser(),
+      getPopularStocks(),
+    ]);
 
     return NextResponse.json(
       {
-        totalStocks: Number(countRow?.count ?? 0),
-        topGainer: gainer ?? null,
-        topLoser: loser ?? null,
+        totalStocks,
+        topGainer,
+        topLoser,
         popular: popular ?? [],
       },
       {

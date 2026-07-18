@@ -5,8 +5,6 @@ import logging
 import hashlib
 from datetime import datetime, timedelta, date
 import requests
-import psycopg2
-from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 
 # Project root is one level up from this script's directory (scripts/)
@@ -20,8 +18,19 @@ if os.path.exists(local_env):
 else:
     load_dotenv(parent_env)
 
+# Ensure dal.py can be imported from Backend/
+sys.path.insert(0, PROJECT_ROOT)
+from dal import (
+    get_connection,
+    init_metadata_table,
+    get_last_run_date,
+    update_last_run_date,
+    init_corporate_action_tables,
+    load_existing_hashes,
+    insert_corporate_action_records,
+    ACTION_TYPE_TO_TABLE,
+)
 
-DATABASE_URL = os.getenv("DATABASE_URL")
 LOOKAHEAD_DAYS = int(os.getenv("CORP_ACT_LOOKAHEAD_DAYS", 90))
 INITIAL_LOOKBACK_DAYS = 7300  # ~20 years for first run
 
@@ -68,133 +77,11 @@ HASH_FIELDS = {
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
-def get_connection():
-    if not DATABASE_URL:
-        raise ValueError("DATABASE_URL is not set in the environment or .env file.")
-    return psycopg2.connect(DATABASE_URL)
-
-
 def calculate_row_hash(record, act_type):
     """SHA-256 hash using only the columns specified for this action type."""
     fields = HASH_FIELDS.get(act_type, ["isin", "ex_date"])
     hash_str = "|".join(str(record.get(f)) for f in fields)
     return hashlib.sha256(hash_str.encode('utf-8')).hexdigest()
-
-
-def load_existing_hashes(conn, table_name):
-    existing = set()
-    with conn.cursor() as cur:
-        try:
-            cur.execute(f"SELECT row_hash FROM {table_name};")
-            for row in cur.fetchall():
-                existing.add(row[0])
-        except Exception as e:
-            logger.warning(f"Could not load existing records for {table_name}: {e}")
-    return existing
-
-
-# ── Metadata table (resume-from-last-run) ──────────────────────────────────
-
-def init_metadata_table():
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS ingestion_metadata (
-                    script_name VARCHAR(100) PRIMARY KEY,
-                    last_run_date DATE NOT NULL,
-                    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
-                );
-            """)
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to initialize metadata table: {e}")
-        raise
-    finally:
-        conn.close()
-
-
-def get_last_run_date(script_name):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT last_run_date FROM ingestion_metadata WHERE script_name = %s",
-                (script_name,),
-            )
-            row = cur.fetchone()
-            return row[0] if row else None
-    finally:
-        conn.close()
-
-
-def update_last_run_date(script_name, run_date):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO ingestion_metadata (script_name, last_run_date, updated_at)
-                VALUES (%s, %s, NOW())
-                ON CONFLICT (script_name) DO UPDATE SET
-                    last_run_date = EXCLUDED.last_run_date,
-                    updated_at = EXCLUDED.updated_at
-            """, (script_name, run_date))
-        conn.commit()
-    finally:
-        conn.close()
-
-
-# ── Table initialisation ───────────────────────────────────────────────────
-
-def init_tables():
-    logger.info("Initializing corporate actions tables...")
-    corp_tables = [
-        "corporate_actions_quarterly_results",
-        "corporate_actions_bonus",
-        "corporate_actions_dividends",
-        "corporate_actions_splits",
-        "corporate_actions_rights",
-        "corporate_actions_buybacks",
-    ]
-
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            for table in corp_tables:
-                cur.execute(f"""
-                    CREATE TABLE IF NOT EXISTS {table} (
-                        row_hash VARCHAR(64) PRIMARY KEY,
-                        isin VARCHAR(20) NOT NULL,
-                        sym VARCHAR(20) NOT NULL,
-                        disp_sym VARCHAR(100),
-                        exch VARCHAR(10),
-                        inst VARCHAR(20),
-                        seg VARCHAR(10),
-                        seosym VARCHAR(100),
-                        ltp DOUBLE PRECISION,
-                        volume BIGINT,
-                        pchange DOUBLE PRECISION,
-                        pperchange DOUBLE PRECISION,
-                        act_type VARCHAR(100) NOT NULL,
-                        ann_date DATE,
-                        ann_ltp DOUBLE PRECISION,
-                        div_type VARCHAR(50),
-                        ex_date DATE,
-                        note TEXT,
-                        rec_date DATE,
-                        rmk TEXT,
-                        fetched_at TIMESTAMP WITH TIME ZONE NOT NULL
-                    );
-                """)
-        conn.commit()
-        logger.info("Corporate actions tables initialized successfully.")
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to initialize tables: {e}")
-        raise
-    finally:
-        conn.close()
 
 
 # ── Network helpers ────────────────────────────────────────────────────────
@@ -355,60 +242,11 @@ def fetch_corporate_actions(session, act_type, start_date, end_date, existing_ke
     return fetched_records
 
 
-# ── Insert new records ─────────────────────────────────────────────────────
-
-def insert_records(table_name, records):
-    if not records:
-        return
-
-    query = f"""
-        INSERT INTO {table_name} (
-            row_hash, isin, sym, disp_sym, exch, inst, seg, seosym,
-            ltp, volume, pchange, pperchange,
-            act_type, ann_date, ann_ltp, div_type, ex_date, note, rec_date, rmk,
-            fetched_at
-        ) VALUES %s
-        ON CONFLICT (row_hash) DO UPDATE SET
-            isin = EXCLUDED.isin,
-            sym = EXCLUDED.sym,
-            disp_sym = EXCLUDED.disp_sym,
-            exch = EXCLUDED.exch,
-            inst = EXCLUDED.inst,
-            seg = EXCLUDED.seg,
-            seosym = EXCLUDED.seosym,
-            ltp = EXCLUDED.ltp,
-            volume = EXCLUDED.volume,
-            pchange = EXCLUDED.pchange,
-            pperchange = EXCLUDED.pperchange,
-            ann_date = EXCLUDED.ann_date,
-            ann_ltp = EXCLUDED.ann_ltp,
-            div_type = EXCLUDED.div_type,
-            ex_date = EXCLUDED.ex_date,
-            note = EXCLUDED.note,
-            rec_date = EXCLUDED.rec_date,
-            rmk = EXCLUDED.rmk,
-            fetched_at = EXCLUDED.fetched_at;
-    """
-
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            execute_values(cur, query, records)
-        conn.commit()
-        logger.info(f"Inserted {len(records)} records into '{table_name}'.")
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to insert records into '{table_name}': {e}")
-        raise
-    finally:
-        conn.close()
-
-
 # ── Main ───────────────────────────────────────────────────────────────────
 
 def main():
     logger.info("Starting corporate actions ingestion pipeline...")
-    init_tables()
+    init_corporate_action_tables(logger)
     init_metadata_table()
 
     today = date.today()
@@ -426,23 +264,14 @@ def main():
     logger.info(f"Date range: {start_date} -> {end_date}")
     fetched_at = datetime.now()
 
-    action_types = {
-        "QUARTERLY RESULT ANNOUNCEMENT": "corporate_actions_quarterly_results",
-        "BONUS": "corporate_actions_bonus",
-        "DIVIDEND": "corporate_actions_dividends",
-        "Splits": "corporate_actions_splits",
-        "Rights": "corporate_actions_rights",
-        "Buyback": "corporate_actions_buybacks",
-    }
-
     session = requests.Session()
 
-    for act_type, table_name in action_types.items():
+    for act_type, table_name in ACTION_TYPE_TO_TABLE.items():
         logger.info(f"--- Fetching for type: {act_type} ---")
 
         # Load database state for this table
         conn = get_connection()
-        existing_records = load_existing_hashes(conn, table_name)
+        existing_records = load_existing_hashes(conn, table_name, logger)
         conn.close()
 
         logger.info(f"DB state: existing_keys={len(existing_records)}")
@@ -496,7 +325,7 @@ def main():
                 ))
 
             logger.info(f"Inserting {new_count} new records into '{table_name}' (skipped {skipped_count})...")
-            insert_records(table_name, formatted_tuples)
+            insert_corporate_action_records(table_name, formatted_tuples, logger)
         else:
             logger.info(f"No new records for {act_type}. Skipped {skipped_count} existing.")
 

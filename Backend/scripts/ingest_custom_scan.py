@@ -4,8 +4,6 @@ import time
 import logging
 from datetime import datetime
 import requests
-import psycopg2
-from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 
 # Project root is one level up from this script's directory (scripts/)
@@ -19,8 +17,14 @@ if os.path.exists(local_env):
 else:
     load_dotenv(parent_env)
 
-
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Ensure dal.py can be imported from Backend/
+sys.path.insert(0, PROJECT_ROOT)
+from dal import (
+    get_connection,
+    init_custom_scan_table,
+    load_existing_isins,
+    upsert_custom_scan_records,
+)
 
 # ---------------------------------------------------------------------------
 # Logging Setup
@@ -52,104 +56,6 @@ HEADERS = {
     'referer': 'https://dhan.co/',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36'
 }
-
-def get_connection():
-    if not DATABASE_URL:
-        raise ValueError("DATABASE_URL is not set in the environment or .env file.")
-    return psycopg2.connect(DATABASE_URL)
-
-def load_existing_isins(conn):
-    existing = set()
-    with conn.cursor() as cur:
-        try:
-            cur.execute("SELECT isin FROM custom_scan;")
-            for row in cur.fetchall():
-                existing.add(row[0])
-        except Exception as e:
-            logger.warning(f"Could not load existing records: {e}")
-    return existing
-
-
-def init_table():
-    logger.info("Initializing custom_scan table...")
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-            CREATE TABLE IF NOT EXISTS custom_scan (
-                isin VARCHAR(20) NOT NULL,
-                sym VARCHAR(20) NOT NULL,
-                disp_sym VARCHAR(100),
-                exch VARCHAR(10),
-                inst VARCHAR(20),
-                seg VARCHAR(10),
-                seosym VARCHAR(100),
-                mcap DOUBLE PRECISION,
-                mcapclass VARCHAR(50),
-                pe DOUBLE PRECISION,
-                div_yeild DOUBLE PRECISION,
-                revenue DOUBLE PRECISION,
-                year_1_revenue_growth DOUBLE PRECISION,
-                net_profit_margin DOUBLE PRECISION,
-                yoy_last_qtrly_profit_growth DOUBLE PRECISION,
-                ebidta_margin DOUBLE PRECISION,
-                volume BIGINT,
-                price_perchng_1year DOUBLE PRECISION,
-                price_perchng_3year DOUBLE PRECISION,
-                price_perchng_5year DOUBLE PRECISION,
-                ind_pe DOUBLE PRECISION,
-                pb DOUBLE PRECISION,
-                eps DOUBLE PRECISION,
-                day_sma_50_current_candle DOUBLE PRECISION,
-                day_sma_200_current_candle DOUBLE PRECISION,
-                day_rsi_14_current_candle DOUBLE PRECISION,
-                roce DOUBLE PRECISION,
-                ltp DOUBLE PRECISION,
-                roe DOUBLE PRECISION,
-                rt_away_from_5_year_high DOUBLE PRECISION,
-                rt_away_from_1_month_high DOUBLE PRECISION,
-                high_5yr DOUBLE PRECISION,
-                high_3yr DOUBLE PRECISION,
-                high_1yr DOUBLE PRECISION,
-                high_1wk DOUBLE PRECISION,
-                price_perchng_1mon DOUBLE PRECISION,
-                price_perchng_1week DOUBLE PRECISION,
-                price_perchng_3mon DOUBLE PRECISION,
-                yearly_earning_per_share DOUBLE PRECISION,
-                ocf_growth_on_yr DOUBLE PRECISION,
-                year_1_cagr_eps_growth DOUBLE PRECISION,
-                net_change_in_cash DOUBLE PRECISION,
-                free_cash_flow DOUBLE PRECISION,
-                price_perchng_2week DOUBLE PRECISION,
-                day_bb_upper_sub_bb_lower DOUBLE PRECISION,
-                day_atr_14_current_candle_mul_2 DOUBLE PRECISION,
-                min_5_high_current_candle DOUBLE PRECISION,
-                min_15_high_current_candle DOUBLE PRECISION,
-                min_5_ema_50_current_candle DOUBLE PRECISION,
-                min_15_ema_50_current_candle DOUBLE PRECISION,
-                min_15_sma_100_current_candle DOUBLE PRECISION,
-                open DOUBLE PRECISION,
-                bc_close DOUBLE PRECISION,
-                rmp DOUBLE PRECISION,
-                pledge_benefit DOUBLE PRECISION,
-                lot_size INTEGER,
-                low_1yr DOUBLE PRECISION,
-                multiplier INTEGER,
-                pchange DOUBLE PRECISION,
-                pperchange DOUBLE PRECISION,
-                tick_size DOUBLE PRECISION,
-                fetched_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                PRIMARY KEY (isin)
-            );
-            """)
-        conn.commit()
-        logger.info("custom_scan table initialized successfully.")
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to initialize table: {e}")
-        raise e
-    finally:
-        conn.close()
 
 def make_post_request(session, url, json_payload, timeout=20, max_retries=5, initial_backoff=2):
     backoff = initial_backoff
@@ -310,107 +216,13 @@ def fetch_custom_scan(session, existing_keys):
             
     return fetched_records
 
-def upsert_records(records):
-    if not records:
-        return
-        
-    query = """
-        INSERT INTO custom_scan (
-            isin, sym, disp_sym, exch, inst, seg, seosym, mcap, mcapclass, pe, div_yeild, revenue,
-            year_1_revenue_growth, net_profit_margin, yoy_last_qtrly_profit_growth, ebidta_margin, volume,
-            price_perchng_1year, price_perchng_3year, price_perchng_5year, ind_pe, pb, eps,
-            day_sma_50_current_candle, day_sma_200_current_candle, day_rsi_14_current_candle, roce, ltp, roe,
-            rt_away_from_5_year_high, rt_away_from_1_month_high, high_5yr, high_3yr, high_1yr, high_1wk,
-            price_perchng_1mon, price_perchng_1week, price_perchng_3mon, yearly_earning_per_share,
-            ocf_growth_on_yr, year_1_cagr_eps_growth, net_change_in_cash, free_cash_flow, price_perchng_2week,
-            day_bb_upper_sub_bb_lower, day_atr_14_current_candle_mul_2, min_5_high_current_candle,
-            min_15_high_current_candle, min_5_ema_50_current_candle, min_15_ema_50_current_candle,
-            min_15_sma_100_current_candle, open, bc_close, rmp, pledge_benefit, lot_size, low_1yr,
-            multiplier, pchange, pperchange, tick_size, fetched_at
-        ) VALUES %s
-        ON CONFLICT (isin) DO UPDATE SET
-            sym = EXCLUDED.sym,
-            disp_sym = EXCLUDED.disp_sym,
-            exch = EXCLUDED.exch,
-            inst = EXCLUDED.inst,
-            seg = EXCLUDED.seg,
-            seosym = EXCLUDED.seosym,
-            mcap = EXCLUDED.mcap,
-            mcapclass = EXCLUDED.mcapclass,
-            pe = EXCLUDED.pe,
-            div_yeild = EXCLUDED.div_yeild,
-            revenue = EXCLUDED.revenue,
-            year_1_revenue_growth = EXCLUDED.year_1_revenue_growth,
-            net_profit_margin = EXCLUDED.net_profit_margin,
-            yoy_last_qtrly_profit_growth = EXCLUDED.yoy_last_qtrly_profit_growth,
-            ebidta_margin = EXCLUDED.ebidta_margin,
-            volume = EXCLUDED.volume,
-            price_perchng_1year = EXCLUDED.price_perchng_1year,
-            price_perchng_3year = EXCLUDED.price_perchng_3year,
-            price_perchng_5year = EXCLUDED.price_perchng_5year,
-            ind_pe = EXCLUDED.ind_pe,
-            pb = EXCLUDED.pb,
-            eps = EXCLUDED.eps,
-            day_sma_50_current_candle = EXCLUDED.day_sma_50_current_candle,
-            day_sma_200_current_candle = EXCLUDED.day_sma_200_current_candle,
-            day_rsi_14_current_candle = EXCLUDED.day_rsi_14_current_candle,
-            roce = EXCLUDED.roce,
-            ltp = EXCLUDED.ltp,
-            roe = EXCLUDED.roe,
-            rt_away_from_5_year_high = EXCLUDED.rt_away_from_5_year_high,
-            rt_away_from_1_month_high = EXCLUDED.rt_away_from_1_month_high,
-            high_5yr = EXCLUDED.high_5yr,
-            high_3yr = EXCLUDED.high_3yr,
-            high_1yr = EXCLUDED.high_1yr,
-            high_1wk = EXCLUDED.high_1wk,
-            price_perchng_1mon = EXCLUDED.price_perchng_1mon,
-            price_perchng_1week = EXCLUDED.price_perchng_1week,
-            price_perchng_3mon = EXCLUDED.price_perchng_3mon,
-            yearly_earning_per_share = EXCLUDED.yearly_earning_per_share,
-            ocf_growth_on_yr = EXCLUDED.ocf_growth_on_yr,
-            year_1_cagr_eps_growth = EXCLUDED.year_1_cagr_eps_growth,
-            net_change_in_cash = EXCLUDED.net_change_in_cash,
-            free_cash_flow = EXCLUDED.free_cash_flow,
-            price_perchng_2week = EXCLUDED.price_perchng_2week,
-            day_bb_upper_sub_bb_lower = EXCLUDED.day_bb_upper_sub_bb_lower,
-            day_atr_14_current_candle_mul_2 = EXCLUDED.day_atr_14_current_candle_mul_2,
-            min_5_high_current_candle = EXCLUDED.min_5_high_current_candle,
-            min_15_high_current_candle = EXCLUDED.min_15_high_current_candle,
-            min_5_ema_50_current_candle = EXCLUDED.min_5_ema_50_current_candle,
-            min_15_ema_50_current_candle = EXCLUDED.min_15_ema_50_current_candle,
-            min_15_sma_100_current_candle = EXCLUDED.min_15_sma_100_current_candle,
-            open = EXCLUDED.open,
-            bc_close = EXCLUDED.bc_close,
-            rmp = EXCLUDED.rmp,
-            pledge_benefit = EXCLUDED.pledge_benefit,
-            lot_size = EXCLUDED.lot_size,
-            low_1yr = EXCLUDED.low_1yr,
-            multiplier = EXCLUDED.multiplier,
-            pchange = EXCLUDED.pchange,
-            pperchange = EXCLUDED.pperchange,
-            tick_size = EXCLUDED.tick_size,
-            fetched_at = EXCLUDED.fetched_at;
-    """
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            execute_values(cur, query, records)
-        conn.commit()
-        logger.info(f"Upserted {len(records)} records into custom_scan.")
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to upsert records: {e}")
-        raise e
-    finally:
-        conn.close()
-
 def main():
     logger.info("Starting custom scan ingestion...")
-    init_table()
+    init_custom_scan_table(logger)
     
     # Load database state
     conn = get_connection()
-    existing_records = load_existing_isins(conn)
+    existing_records = load_existing_isins(conn, logger)
     conn.close()
     
     logger.info(f"Loaded database state. Total existing keys: {len(existing_records)}")
@@ -462,10 +274,10 @@ def main():
         
     if new_records_count > 0:
         logger.info(f"Writing {len(formatted_tuples)} records ({new_records_count} new, skipped {skipped_count}) to custom_scan...")
-        upsert_records(formatted_tuples)
+        upsert_custom_scan_records(formatted_tuples, logger)
     else:
         logger.info(f"Updating {len(formatted_tuples)} existing records in custom_scan (skipped {skipped_count})...")
-        upsert_records(formatted_tuples)
+        upsert_custom_scan_records(formatted_tuples, logger)
         
     logger.info("Custom scan ingestion completed successfully.")
 

@@ -2,7 +2,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { query } from "@/lib/db.server";
+import { getStockByIsin } from "@/lib/dal";
 import { ThemeToggle } from "@/lib/ThemeToggle";
 import { num, fmtPrice, fmtPct, fmtN, mcapBadge, timeAgo } from "@/lib/format";
 import type { Metadata } from "next";
@@ -16,11 +16,8 @@ import { TechnicalIndicators } from "./technicalIndicators";
 import { CorporateActions } from "./corporateActions";
 import { LatestNews } from "./latestNews";
 
-type Row = Record<string, string | number | null>;
-
 const getStockData = cache(async (isin: string) => {
-  const rows = await query<Row>(`SELECT * FROM custom_scan WHERE isin = $1 LIMIT 1`, [isin]);
-  return rows[0] || null;
+  return getStockByIsin(isin);
 });
 
 export async function generateMetadata({

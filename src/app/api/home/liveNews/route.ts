@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@/lib/db.server";
+import { getLatestNews } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +11,7 @@ export async function GET(request: NextRequest) {
       100,
     );
 
-    const rows = await query<Record<string, unknown>>(
-      `SELECT article_id, title, text, overall_sentiment, category, sub_category,
-              publish_date, stock_name, isin_code, display_symbol, article_slug
-       FROM live_news
-       WHERE publish_date IS NOT NULL
-       ORDER BY publish_date DESC
-       LIMIT $1`,
-      [limit],
-    );
+    const rows = await getLatestNews(limit);
 
     return NextResponse.json(
       { news: rows },

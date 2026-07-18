@@ -33,6 +33,7 @@ graph TD
 ```bash
 ├── Backend/                 # Python ingestion pipeline
 │   ├── scripts/             # Data fetchers (corporate actions, news, scans)
+│   ├── dal.py               # Data Access Layer — all table names, schemas & SQL
 │   ├── main.py              # Subprocess pipeline orchestrator
 │   └── requirements.txt     # Python dependencies
 │
@@ -40,12 +41,17 @@ graph TD
     ├── app/                 # Next.js App Router
     │   ├── api/             # REST endpoints namespaces
     │   │   ├── home/        # Home API (customScans, liveNews, search)
+    │   │   ├── screener/    # Screener API (filtered results, facets)
     │   │   └── stock/[isin]/# Stock API (corporateActions, customScans, liveNews)
     │   ├── (home)/          # Root landing page files (page, search, overview, news)
     │   ├── screener/        # Stock Screener page
     │   └── stock/[isin]/    # Component-isolated dynamic profile page
     │
-    ├── lib/                 # Shared utilities, DB pool singletons, and theme toggler
+    ├── lib/                 # Shared utilities & data access
+    │   ├── dal.ts           # Data Access Layer — all table names, columns & queries
+    │   ├── db.server.ts     # Low-level pg.Pool connection singleton
+    │   ├── types.ts         # Shared TypeScript types
+    │   └── ...              # Theme toggler, formatters, etc.
     └── styles.css           # Styling configuration (Tailwind CSS v4 & theme variables)
 ```
 
@@ -94,6 +100,22 @@ pip install -r requirements.txt
 # Run ingestion script
 python main.py
 ```
+
+---
+
+## 🗄️ Data Access Layer (DAL)
+
+All SQL queries, table names, and column definitions are centralized into dedicated **Data Access Layer** files — one per codebase:
+
+| Codebase | DAL File | What it contains |
+|----------|----------|------------------|
+| Frontend (TypeScript) | `src/lib/dal.ts` | 8 table name constants, 6 column lists, 15 typed query functions |
+| Backend (Python) | `Backend/dal.py` | 8 table name constants, CREATE TABLE schemas, all INSERT/UPSERT SQL |
+
+**Why?** If a table is renamed or a column changes, you update **one file per codebase** instead of hunting through dozens of route handlers and ingestion scripts.
+
+- API routes import query functions from `dal.ts` — no route file writes raw SQL.
+- Ingestion scripts import table init, load, and upsert functions from `dal.py` — no script writes inline SQL.
 
 ---
 
